@@ -25,6 +25,7 @@ DATA_DIR="/var/lib/streamsonic"
 UNIT="/etc/systemd/system/streamsonic.service"
 BINARY="$BIN_DIR/streamsonic"
 CONF="$CONF_DIR/streamsonic.conf"
+WORK=""
 
 log() { printf '  %s\n' "$*"; }
 die() { printf 'error: %s\n' "$*" >&2; exit 1; }
@@ -65,29 +66,25 @@ resolve_asset() {
 }
 
 install_binary() {
-  local tmp
-  tmp="$(mktemp -d)"
-  trap 'rm -rf "$tmp"' EXIT
-
   log "downloading ${ASSET}"
-  fetch "${BASE}/${ASSET}" "$tmp/pkg.tar.gz" \
+  fetch "${BASE}/${ASSET}" "$WORK/pkg.tar.gz" \
     || die "cannot download ${BASE}/${ASSET}"
 
-  if fetch "${BASE}/checksums.txt" "$tmp/checksums.txt" 2>/dev/null; then
+  if fetch "${BASE}/checksums.txt" "$WORK/checksums.txt" 2>/dev/null; then
     local want got
-    want="$(awk -v a="$ASSET" '$2==a {print $1}' "$tmp/checksums.txt" | head -n1)"
+    want="$(awk -v a="$ASSET" '$2==a {print $1}' "$WORK/checksums.txt" | head -n1)"
     if [ -n "$want" ]; then
-      got="$(sha256sum "$tmp/pkg.tar.gz" | awk '{print $1}')"
+      got="$(sha256sum "$WORK/pkg.tar.gz" | awk '{print $1}')"
       [ "$want" = "$got" ] || die "checksum mismatch for ${ASSET}"
       log "checksum verified"
     fi
   fi
 
-  tar -xzf "$tmp/pkg.tar.gz" -C "$tmp"
-  [ -f "$tmp/streamsonic" ] || die "archive does not contain the streamsonic binary"
+  tar -xzf "$WORK/pkg.tar.gz" -C "$WORK"
+  [ -f "$WORK/streamsonic" ] || die "archive does not contain the streamsonic binary"
 
   install -d -m 0755 "$BIN_DIR"
-  install -m 0755 "$tmp/streamsonic" "$BINARY"
+  install -m 0755 "$WORK/streamsonic" "$BINARY"
   log "installed $BINARY"
 }
 
@@ -174,6 +171,8 @@ main() {
   need_root
   detect_platform
   resolve_asset
+  WORK="$(mktemp -d)"
+  trap 'rm -rf "${WORK:-}"' EXIT
   install_binary
   write_config
   write_unit

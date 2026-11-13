@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"sort"
 	"time"
 
 	"streamsonic/internal/api"
@@ -19,7 +20,7 @@ import (
 	"streamsonic/internal/stream"
 )
 
-var version = "1.1.1"
+var version = "1.1.2"
 
 const defaultConfig = `# streamsonic configuration
 http {
@@ -59,10 +60,7 @@ func main() {
 		log.Fatalf("config: %v", err)
 	}
 
-	root := *dvrRoot
-	if root == "" {
-		root = filepath.Join(filepath.Dir(absPath(*configPath)), "dvr")
-	}
+	root := resolveDVRRoot(cfg, *configPath, *dvrRoot)
 
 	bus := events.NewBus(cfg.Sinks)
 	registry := session.NewRegistry()
@@ -122,6 +120,30 @@ func loadConfig(path string) (*config.Config, error) {
 	}
 	cfg.Path = path
 	return cfg, nil
+}
+
+func resolveDVRRoot(cfg *config.Config, configPath, flagValue string) string {
+	if flagValue != "" {
+		return flagValue
+	}
+	if cfg != nil {
+		for _, name := range []string{"default", "main"} {
+			if d := cfg.DVRs[name]; d != nil && d.Root != "" {
+				return d.Root
+			}
+		}
+		names := make([]string, 0, len(cfg.DVRs))
+		for name := range cfg.DVRs {
+			names = append(names, name)
+		}
+		sort.Strings(names)
+		for _, name := range names {
+			if d := cfg.DVRs[name]; d != nil && d.Root != "" {
+				return d.Root
+			}
+		}
+	}
+	return filepath.Join(filepath.Dir(absPath(configPath)), "dvr")
 }
 
 func absPath(p string) string {

@@ -15,6 +15,18 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   GitHub release for the pushed tag.
 - CI workflow running `gofmt`, `go vet`, `go test`, a full build and `shellcheck`.
 
+## [1.1.2] - 2026-11-13
+
+### Fixed
+
+- `install.sh` no longer exits with `tmp: unbound variable` when `set -u` is in
+  effect: the download workspace is a script-scope directory removed by a single
+  `EXIT` trap.
+- Default DVR root now resolves from the first configured `dvr` block (`default`,
+  then `main`, then alphabetically), so a packaged install writes recordings under
+  `/var/lib/streamsonic/dvr` instead of the read-only `/etc/streamsonic/dvr` that
+  `ProtectSystem=full` forbids.
+
 ## [1.1.1] - 2026-11-13
 
 Release pipeline fix. The 1.1.0 tag produced no release assets because the

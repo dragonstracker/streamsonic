@@ -1,5 +1,5 @@
 BINARY  := streamsonic
-VERSION ?= 1.1.1
+VERSION ?= 1.1.2
 LDFLAGS := -s -w -X main.version=$(VERSION)
 GOFLAGS := -trimpath
 
