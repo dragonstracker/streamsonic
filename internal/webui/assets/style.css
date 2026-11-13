@@ -377,6 +377,11 @@ textarea {
   color: var(--primary);
 }
 
+.sortbar .col.muted {
+  color: var(--gray-light);
+  cursor: default;
+}
+
 .sortbar .pipe {
   color: var(--gray-light);
   margin: 0 12px;

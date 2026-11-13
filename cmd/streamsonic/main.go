@@ -143,6 +143,9 @@ func resolveDVRRoot(cfg *config.Config, configPath, flagValue string) string {
 			}
 		}
 	}
+	if _, err := os.Stat("/var/lib/streamsonic"); err == nil {
+		return "/var/lib/streamsonic/dvr"
+	}
 	return filepath.Join(filepath.Dir(absPath(configPath)), "dvr")
 }
 
