@@ -6,6 +6,15 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.3.2] - 2026-11-13
+
+### Fixed
+
+- Stream text search (`q` / `query`) filters server-side the same way Flussonic
+  does: case-insensitive substring over name, title, comment, and input URLs.
+- `select=` on `/streams` returns only the requested fields so chip/count
+  queries stay light.
+
 ## [1.3.1] - 2026-11-13
 
 ### Fixed

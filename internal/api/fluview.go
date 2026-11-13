@@ -80,16 +80,42 @@ func fluInputView(in config.Input) map[string]any {
 	return out
 }
 
+func streamSearchHaystack(st *stream.Stream) string {
+	cfg := st.Config()
+	parts := []string{st.Name()}
+	if cfg != nil {
+		parts = append(parts, cfg.Name, cfg.Title, cfg.Comment)
+		for _, in := range cfg.Inputs {
+			parts = append(parts, in.URL, fluInputURL(in))
+		}
+	}
+	return strings.ToLower(strings.Join(parts, "\n"))
+}
+
+func matchStreamQuery(st *stream.Stream, raw string) bool {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return true
+	}
+	return strings.Contains(streamSearchHaystack(st), strings.ToLower(raw))
+}
+
 func matchStreamFilters(st *stream.Stream, q map[string][]string) bool {
 	alive, status := fluStatus(st)
 	cfg := st.Config()
+	if vals := q["q"]; len(vals) > 0 && !matchStreamQuery(st, vals[0]) {
+		return false
+	}
+	if vals := q["query"]; len(vals) > 0 && !matchStreamQuery(st, vals[0]) {
+		return false
+	}
 	for key, vals := range q {
 		if len(vals) == 0 {
 			continue
 		}
 		v := vals[0]
 		switch key {
-		case "limit", "cursor", "next", "sort", "select", "q":
+		case "limit", "cursor", "next", "sort", "select", "q", "query", "page", "view":
 			continue
 		case "disabled":
 			want := v == "true"
@@ -264,6 +290,24 @@ func parseCursor(r *http.Request) int {
 
 func nextCursor(lastPos int) string {
 	return base64.StdEncoding.EncodeToString([]byte("%24position_gt=" + strconv.Itoa(lastPos)))
+}
+
+func projectStream(view map[string]any, selectParam string) map[string]any {
+	selectParam = strings.TrimSpace(selectParam)
+	if selectParam == "" {
+		return view
+	}
+	out := map[string]any{}
+	for _, field := range strings.Split(selectParam, ",") {
+		field = strings.TrimSpace(field)
+		if field == "" {
+			continue
+		}
+		if v, ok := view[field]; ok {
+			out[field] = v
+		}
+	}
+	return out
 }
 
 func sortedStreams(list []*stream.Stream) []*stream.Stream {

@@ -34,9 +34,10 @@ func (s *Server) listStreams(w http.ResponseWriter, r *http.Request) {
 		end = len(list)
 	}
 	page := list[offset:end]
+	selectFields := r.URL.Query().Get("select")
 	out := make([]map[string]any, 0, len(page))
 	for i, st := range page {
-		out = append(out, fluStreamView(st, offset+i))
+		out = append(out, projectStream(fluStreamView(st, offset+i), selectFields))
 	}
 	next := ""
 	if end < len(list) && end > 0 {
