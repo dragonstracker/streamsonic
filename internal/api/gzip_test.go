@@ -52,7 +52,7 @@ func TestGzipLeavesIdentityAlone(t *testing.T) {
 		{"preview manifest", "/114/preview.json", nil},
 		{"media prefix", "/stream/114/index.m3u8", nil},
 		{"byte range", APIPrefix + "/streams", map[string]string{"Range": "bytes=0-9"}},
-		{"font", "/admin/assets/fonts/fira-sans-400.woff2", nil},
+		{"font", "/admin/assets/fonts/custom-400.woff2", nil},
 		{"no accept encoding", APIPrefix + "/streams", map[string]string{"Accept-Encoding": "identity"}},
 	}
 	for _, tc := range cases {

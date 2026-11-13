@@ -6,6 +6,19 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.2.7] - 2026-11-13
+
+### Fixed
+
+- The panel settings endpoint reports the embedded font files by their real names
+  (`custom-300`, `custom-400`, `custom-500`), so a client that resolves faces from the
+  settings response finds them instead of the retired `fira-sans` files.
+
+### Changed
+
+- The stylesheet keeps only the icon glyphs the panel draws, and the stream row markup
+  is built once instead of being rebuilt on every poll.
+
 ## [1.2.6] - 2026-11-13
 
 ### Changed

@@ -100,9 +100,9 @@ the SPA. It is unauthenticated so the login screen can be branded.
     "background": "#fff"
   },
   "fonts": {
-    "regular": "fira-sans-400.woff2",
-    "light": "fira-sans-300.woff2",
-    "medium": "fira-sans-500.woff2"
+    "regular": "custom-400.woff2",
+    "light": "custom-300.woff2",
+    "medium": "custom-500.woff2"
   },
   "locales": ["en"],
   "menu_items": {
