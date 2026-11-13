@@ -308,6 +308,7 @@ func (s *Server) fluConfigStats() map[string]any {
 		"streamer_status": "running",
 		"transcoder":      false,
 		"is_chassis":      false,
+		"license_type":    "open_source",
 		"input_kbit":      rateIn / 1000,
 		"output_kbit":     rateOut / 1000,
 		"online_streams":  online,

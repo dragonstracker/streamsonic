@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"runtime"
+	"strings"
 	"time"
 
 	"streamsonic/internal/config"
@@ -19,14 +20,18 @@ var (
 
 func (s *Server) getConfig(w http.ResponseWriter, r *http.Request) {
 	cfg := s.store.Current()
+	if wantsPlainText(r) {
+		writeText(w, http.StatusOK, cfg.RenderText())
+		return
+	}
 	listeners := map[string]any{}
 	if cfg.HTTP.Port > 0 {
 		listeners["http"] = []map[string]any{{"port": cfg.HTTP.Port}}
 	}
 	body := map[string]any{
-		"server_id": s.serverID(),
-		"stats":     s.fluConfigStats(),
-		"listeners": listeners,
+		"server_id":   s.serverID(),
+		"stats":       s.fluConfigStats(),
+		"listeners":   listeners,
 		"session_log": cfg.SessionLog,
 	}
 	if cfg.AdminLogin != "" {
@@ -44,8 +49,11 @@ func (s *Server) getConfigText(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) putConfig(w http.ResponseWriter, r *http.Request) {
-	ct := r.Header.Get("Content-Type")
-	if ct == "text/plain" || ct == "application/x-streamsonic-config" {
+	ct := strings.ToLower(strings.TrimSpace(r.Header.Get("Content-Type")))
+	if i := strings.IndexByte(ct, ';'); i >= 0 {
+		ct = strings.TrimSpace(ct[:i])
+	}
+	if ct == "text/plain" || ct == "application/x-streamsonic-config" || ct == "application/x-flussonic-config" {
 		body, err := io.ReadAll(io.LimitReader(r.Body, 8<<20))
 		if err != nil {
 			writeErr(w, http.StatusBadRequest, err.Error())
@@ -153,7 +161,6 @@ func (s *Server) uiSettings(w http.ResponseWriter, r *http.Request) {
 			"pins":                 false,
 			"pulse":                true,
 			"streamer_config":      true,
-			"streamer_upgrade":     map[string]string{"package_name": "streamsonic"},
 			"upload_logs":          true,
 		},
 	})
@@ -161,9 +168,19 @@ func (s *Server) uiSettings(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) systemUpdater(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{
-		"package_name": "streamsonic",
-		"status":       "up_to_date",
-		"version":      s.version,
+		"status":  "disabled",
+		"version": s.version,
+	})
+}
+
+func (s *Server) licenseInfo(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]any{
+		"status":      "open_source",
+		"license":     "open_source",
+		"version":     s.version,
+		"activated":   true,
+		"online":      false,
+		"message":     "streamsonic is open source; no license key is required",
 	})
 }
 

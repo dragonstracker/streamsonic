@@ -6,6 +6,21 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.3.1] - 2026-11-13
+
+### Fixed
+
+- Config editor loads and saves the same way as Flussonic: `GET /config` with
+  `Accept: text/plain` returns the config file body, and `PUT /config` accepts
+  `text/plain` even when a charset is attached.
+- `OPTIONS` requests answer `204` instead of falling through to a `405`, which
+  stopped the red "method not allowed" toast in the panel.
+
+### Changed
+
+- License and upgrade menu entries are gone. `/license` reports open source;
+  no license key is required.
+
 ## [1.3.0] - 2026-11-13
 
 ### Changed

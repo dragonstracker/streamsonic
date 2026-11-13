@@ -32,7 +32,7 @@ type Config struct {
 
 func New() *Config {
 	return &Config{
-		HTTP:     HTTP{Port: 8080},
+		HTTP:     HTTP{Port: 8081},
 		Streams:  map[string]*Stream{},
 		DVRs:     map[string]*DVR{},
 		Backends: map[string]*AuthBackend{},

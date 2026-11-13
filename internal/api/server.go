@@ -65,13 +65,15 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET "+APIPrefix+"/cluster/sources", s.auth(s.emptyCollection("sources")))
 	mux.HandleFunc("GET "+APIPrefix+"/system/updater", s.auth(s.systemUpdater))
 	mux.HandleFunc("GET "+APIPrefix+"/admin_view_token", s.auth(s.adminViewToken))
+	mux.HandleFunc("GET "+APIPrefix+"/license", s.auth(s.licenseInfo))
+	mux.HandleFunc("GET "+APIPrefix+"/license/activations", s.auth(s.licenseInfo))
 	mux.HandleFunc("GET "+APIPrefix+"/monitoring/liveness", s.liveness)
 	mux.HandleFunc("GET "+APIPrefix+"/monitoring/readiness", s.readiness)
 	mux.HandleFunc("GET "+APIPrefix+"/version", s.versionHandler)
 
 	mux.HandleFunc("/stream/", s.handleMedia)
 	mux.HandleFunc("/", s.handleRoot)
-	return withGzip(mux)
+	return withCORS(withGzip(mux))
 }
 
 func (s *Server) auth(h http.HandlerFunc) http.HandlerFunc {
@@ -161,4 +163,29 @@ func writeText(w http.ResponseWriter, status int, body string) {
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.WriteHeader(status)
 	w.Write([]byte(body))
+}
+
+func wantsPlainText(r *http.Request) bool {
+	accept := strings.ToLower(r.Header.Get("Accept"))
+	if accept == "" {
+		return false
+	}
+	if strings.Contains(accept, "text/plain") {
+		return true
+	}
+	return false
+}
+
+func withCORS(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, PUT, POST, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "*")
+		w.Header().Set("Access-Control-Expose-Headers", "*")
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
 }
