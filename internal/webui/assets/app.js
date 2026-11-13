@@ -43,6 +43,7 @@
     name: '',
     tab: 'Overview',
     sort: 'Stream',
+    page: 1,
     player: null,
     version: '',
     settings: null,
@@ -217,6 +218,7 @@
     const parts = S.route.split('?')[0].split('/').filter(Boolean);
     S.name = '';
     S.tab = 'Overview';
+    S.page = 1;
 
     const go = (key) => { location.hash = key; };
 
@@ -247,29 +249,49 @@
 
   /* ----------------------------------------------------------- streams */
 
+  function sortStreams(list) {
+    const key = (s) => {
+      const cfg = s.config || {};
+      switch (S.sort) {
+        case 'Input': return ((cfg.inputs && cfg.inputs[0] && cfg.inputs[0].url) || '').toLowerCase();
+        case 'Transcode': return (cfg.extras || []).some((e) => e.name === 'transcoder') ? '1' : '0';
+        case 'DVR': return cfg.dvr ? '1' : '0';
+        case 'Output': return s.status === 'online' ? '0' : '1';
+        default: return (cfg.title || s.name || '').toLowerCase();
+      }
+    };
+    const natural = { numeric: true, sensitivity: 'base' };
+    return list.slice().sort((a, b) => key(a).localeCompare(key(b), undefined, natural) ||
+      String(a.name).localeCompare(String(b.name), undefined, natural));
+  }
+
   function streamRow(s, idx) {
     const st = s.stats || {};
     const cfg = s.config || {};
     const input = (cfg.inputs && cfg.inputs[0] && cfg.inputs[0].url) || (s.input || '');
     const started = s.status === 'online';
-    const dvr = cfg.dvr || s.dvr;
     const dvrOn = !!(cfg.dvr && cfg.dvr.enabled !== false) || !!s.dvr;
+    const title = cfg.title || s.title || '';
+    const ondemand = cfg.ondemand === true;
+    const disabled = cfg.disabled === true;
+    const transcoder = (cfg.extras || []).some((e) => e.name === 'transcoder');
 
-    return '<div class="stream-row" data-name="' + esc(s.name) + '">' +
+    return '<div class="stream-row' + (disabled ? ' disabled' : '') + '" data-name="' + esc(s.name) + '">' +
       '<div class="idx"><a href="#/streams/' + encodeURIComponent(s.name) + '">' + String(idx).padStart(1, '0') + '</a></div>' +
       '<div class="col">' +
-        '<a class="name" href="#/streams/' + encodeURIComponent(s.name) + '">' + esc(s.name) + '</a>' +
-        '<div class="line"><b>Start:</b> ' + (started ? 'Always started' : 'On Demand') + '</div>' +
+        '<a class="name" href="#/streams/' + encodeURIComponent(s.name) + '">' + esc(title || s.name) + '</a>' +
+        (title ? '<div class="line url">' + esc(s.name) + '</div>' : '') +
+        '<div class="line"><b>Start:</b> ' + (ondemand ? 'On Demand' : 'Always started') + '</div>' +
       '</div>' +
       '<div class="col">' +
-        '<div class="line ' + (s.status === 'online' ? 'tag-ok' : (s.last_error ? 'tag-err' : 'tag-warn')) + '">' +
-          (s.status === 'online' ? 'Online' : (s.last_error ? esc(s.last_error) : 'Waiting for clients')) + '</div>' +
+        '<div class="line ' + (disabled ? 'tag-err' : (s.status === 'online' ? 'tag-ok' : (s.last_error ? 'tag-err' : 'tag-warn'))) + '">' +
+          (disabled ? 'Disabled' : (s.status === 'online' ? 'Online' : (s.last_error ? esc(s.last_error) : 'Waiting for clients'))) + '</div>' +
         '<div class="line url">' + esc(input || 'no input') + '</div>' +
       '</div>' +
       '<div class="col">' +
         '<div class="line"><b>Uptime:</b> ' + (started ? since(s.started) : '') + '</div>' +
         '<div class="line"><b>Bitrate:</b> ' + (st.bitrate ? bits(st.bitrate) : 'n/a') + '</div>' +
-        '<div class="line muted">Transcoder disabled</div>' +
+        '<div class="line muted">' + (transcoder ? 'Transcoder configured' : 'Transcoder disabled') + '</div>' +
       '</div>' +
       '<div class="col">' +
         '<div class="line muted">' + (dvrOn ? 'Archive enabled' : 'Archive disabled') + '</div>' +
@@ -284,6 +306,8 @@
 
   async function renderStreamList() {
     const gen = S.gen;
+    const PAGE = 50;
+    if (!S.page) S.page = 1;
     chrome('Streams', esc(S.version || ''), '');
     const v = $('#view');
     v.innerHTML = mediaToolbar('streams') +
@@ -292,10 +316,11 @@
           '<span class="col' + (S.sort === c ? ' sorted' : '') + '" data-sort="' + c + '">' + c + '</span>'
         ).join('<span class="pipe">|</span>') +
       '</div>' +
-      '<div class="stream-list" id="list"><div class="empty">Loading…</div></div>';
+      '<div class="stream-list" id="list"><div class="empty">Loading…</div></div>' +
+      '<div class="sortbar" id="pager"></div>';
 
     $$('[data-sort]', v).forEach((n) => {
-      n.onclick = () => { S.sort = n.dataset.sort; renderStreamList(); };
+      n.onclick = () => { S.sort = n.dataset.sort; S.page = 1; renderStreamList(); };
     });
 
     const load = async () => {
@@ -309,9 +334,28 @@
       if (!host) return;
       if (!list || !list.length) {
         host.innerHTML = '<div class="empty">No streams yet. Use + to create one.</div>';
+        $('#pager').innerHTML = '';
         return;
       }
-      host.innerHTML = list.map((s, i) => streamRow(s, i + 1)).join('');
+      const sorted = sortStreams(list);
+      const pages = Math.max(1, Math.ceil(sorted.length / PAGE));
+      if (S.page > pages) S.page = pages;
+      const from = (S.page - 1) * PAGE;
+      host.innerHTML = sorted.slice(from, from + PAGE).map((s, i) => streamRow(s, from + i + 1)).join('');
+      $('#pager').innerHTML = '<span class="label"><span>' + sorted.length + ' streams</span></span>' +
+        '<span class="col' + (S.page > 1 ? '' : ' muted') + '" data-pg="-1">Prev</span>' +
+        '<span class="pipe">|</span>' +
+        '<span class="col">' + S.page + ' / ' + pages + '</span>' +
+        '<span class="pipe">|</span>' +
+        '<span class="col' + (S.page < pages ? '' : ' muted') + '" data-pg="1">Next</span>';
+      $$('[data-pg]', $('#pager')).forEach((n) => {
+        n.onclick = () => {
+          const next = S.page + Number(n.dataset.pg);
+          if (next < 1 || next > pages || next === S.page) return;
+          S.page = next;
+          load().catch(() => {});
+        };
+      });
       $$('[data-toggle]', host).forEach((sw) => {
         sw.onclick = async () => {
           const on = sw.dataset.on === '1';
@@ -398,12 +442,25 @@
     const body = $('#stab');
     if (S.tab === 'Overview') renderOverview(body, name, data, gen);
     else if (S.tab === 'Input') renderInputTab(body, name, data);
-    else if (S.tab === 'Transcoder') renderSimpleTab(body, 'Transcoder', 'Transcoding pipeline is not enabled on this build. Streams are remuxed without re-encoding.');
+    else if (S.tab === 'Transcoder') renderDirectiveTab(body, data, 'Transcoder', 'transcoder', 'No transcoder configured for this stream.');
     else if (S.tab === 'DVR') renderDVR(body, name, data, gen);
     else if (S.tab === 'Output') renderOutputTab(body, name);
-    else if (S.tab === 'EPG') renderSimpleTab(body, 'EPG', 'No EPG provider configured for this stream.');
+    else if (S.tab === 'EPG') renderDirectiveTab(body, data, 'EPG', 'epg', 'EPG is not enabled for this stream.');
     else if (S.tab === 'Auth') renderSimpleTab(body, 'Auth', 'Publish and play authorization is controlled by global settings. Per-stream auth policies are not enabled on this build.');
     else if (S.tab === 'Play sessions') renderSessions(body, name, gen);
+  }
+
+  function extrasFor(data, name) {
+    return ((data.config || {}).extras || []).filter((e) => e.name === name);
+  }
+
+  function renderDirectiveTab(host, data, title, directive, empty) {
+    const items = extrasFor(data, directive);
+    host.innerHTML = '<div class="panel"><h2>' + title + '</h2>' +
+      (items.length
+        ? '<div class="code-list">' + items.map((e) => '<code>' + esc(e.name + ' ' + (e.args || []).join(' ')) + '</code>').join('') + '</div>'
+        : '<div class="empty">' + empty + '</div>') +
+      '</div>';
   }
 
   function renderOverview(host, name, data, gen) {
@@ -444,7 +501,8 @@
       '<div class="grid2" style="margin-top:16px">' +
         '<div class="panel"><h2>Input media info</h2>' + (tracks || '<div class="empty">No media received</div>') + '</div>' +
         '<div class="panel"><h2>Output media info</h2>' + (tracks || '<div class="empty">No media received</div>') + '</div>' +
-      '</div>';
+      '</div>' +
+      directivesPanel(data);
 
     $('#btn-stop').onclick = async () => {
       try { await api('/streams/' + encodeURIComponent(name) + '/stop', { method: 'PUT' }); toast('Stream stopped'); }
@@ -479,6 +537,15 @@
     stopPlayer();
     S.player = new Preview(name, $('#player'));
     S.player.start();
+  }
+
+  function directivesPanel(data) {
+    const extras = (data.config || {}).extras || [];
+    if (!extras.length) return '';
+    return '<div class="panel" style="margin-top:16px"><h2>Configured directives</h2>' +
+      '<div class="code-list">' +
+      extras.map((e) => '<code>' + esc(e.name + ' ' + (e.args || []).join(' ')) + '</code>').join('') +
+      '</div></div>';
   }
 
   function renderInputTab(host, name, data) {

@@ -175,8 +175,18 @@ Common stream directives:
 | `clients_timeout N` | Seconds before an idle session is reaped |
 | `dvr NAME` | Reference a `dvr` block |
 | `on_play URL` | Authorization hook called before playback |
-| `title`, `comment`, `static`, `ondemand` | Metadata and behaviour flags |
+| `title`, `comment`, `static`, `ondemand`, `disabled` | Metadata and behaviour flags |
 | `protocols { hls true; dash true; ... }` | Per-protocol enablement |
+
+A block declared as `ondemand <name> { … }` is a stream that only starts when a player
+requests its manifest. `disabled true;` keeps the definition in the config but never
+starts it.
+
+Directives this build does not act on (`transcoder`, `drm`, `epg`, `meta`,
+`thumbnails`, `domain`, `logo`, `substyle`) are preserved in order and written back
+unchanged, so a production Flussonic config loads, serves and round-trips without
+losing a line.
+
 
 Input options: `priority`, `source_timeout`, `video_timeout`, `audio_timeout`,
 `retry_limit`, `max_retry_timeout`, `user_agent`, `headers` and arbitrary `key=value`

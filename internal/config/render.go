@@ -121,15 +121,22 @@ func sinkNode(s *EventSink) *Node {
 }
 
 func streamNode(s *Stream) *Node {
-	n := &Node{Name: "stream", Args: []string{s.Name}, Block: true}
+	kw := s.Keyword
+	if kw != "stream" && kw != "ondemand" {
+		kw = "stream"
+		if s.Ondemand {
+			kw = "ondemand"
+		}
+	}
+	n := &Node{Name: kw, Args: []string{s.Name}, Block: true}
 	add := func(name string, args ...string) {
 		n.Children = append(n.Children, &Node{Name: name, Args: args})
 	}
+	if s.Disabled {
+		add("disabled", "true")
+	}
 	for _, in := range s.Inputs {
-		args := []string{in.URL}
-		if in.Type != "" && in.Type != TypeOfURL(in.URL) {
-			args = []string{in.Type, in.URL}
-		}
+		args := []string{inputURL(in)}
 		if in.Priority != 0 {
 			args = append(args, fmt.Sprintf("priority=%d", in.Priority))
 		}
@@ -156,7 +163,7 @@ func streamNode(s *Stream) *Node {
 	if s.Static {
 		add("static", "true")
 	}
-	if s.Ondemand {
+	if s.Ondemand && kw != "ondemand" {
 		add("ondemand", "true")
 	}
 	if s.NoMedia {
@@ -223,11 +230,23 @@ func streamNode(s *Stream) *Node {
 		n.Children = append(n.Children, &Node{Name: "on_play", Args: []string{s.OnPlay.URL}})
 	}
 	for _, p := range s.Pushes {
+		if p.Name != "" {
+			push := &Node{Name: "push", Args: []string{p.Name}, Block: true}
+			if p.URL != "" {
+				push.Children = append(push.Children, &Node{Name: "url", Args: []string{p.URL}})
+			}
+			if p.Comment != "" {
+				push.Children = append(push.Children, &Node{Name: "comment", Args: []string{p.Comment}})
+			}
+			n.Children = append(n.Children, push)
+			continue
+		}
 		add("push", p.URL)
 	}
 	if s.JpegSignKey != "" {
 		add("jpeg_snapshot_sign_key", s.JpegSignKey)
 	}
+	n.Children = append(n.Children, s.Extras...)
 	return n
 }
 

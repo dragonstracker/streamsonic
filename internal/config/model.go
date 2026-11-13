@@ -113,12 +113,54 @@ func (i *Input) UnmarshalJSON(b []byte) error {
 }
 
 func normalizeInputURL(i *Input) {
-	if i.Type == "" || i.URL == "" {
+	if i.URL == "" {
 		return
 	}
-	if rest, ok := strings.CutPrefix(i.URL, i.Type+"://"); ok && strings.Contains(rest, "://") {
-		i.URL = rest
+	u, err := url.Parse(i.URL)
+	if err != nil {
+		return
 	}
+	switch strings.ToLower(u.Scheme) {
+	case "tshttp":
+		u.Scheme = "http"
+		i.Type = "tshttp"
+	case "tshttps":
+		u.Scheme = "https"
+		i.Type = "tshttp"
+	case "hls":
+		u.Scheme = "http"
+		i.Type = "hls"
+	case "hlss":
+		u.Scheme = "https"
+		i.Type = "hls"
+	default:
+		return
+	}
+	i.URL = u.String()
+}
+
+func inputURL(i Input) string {
+	u, err := url.Parse(i.URL)
+	if err != nil || u.Scheme != "http" && u.Scheme != "https" {
+		return i.URL
+	}
+	switch i.Type {
+	case "tshttp":
+		if u.Scheme == "https" {
+			u.Scheme = "tshttps"
+		} else {
+			u.Scheme = "tshttp"
+		}
+	case "hls":
+		if u.Scheme == "https" {
+			u.Scheme = "hlss"
+		} else {
+			u.Scheme = "hls"
+		}
+	default:
+		return i.URL
+	}
+	return u.String()
 }
 
 func (i Input) MarshalJSON() ([]byte, error) {
@@ -127,23 +169,25 @@ func (i Input) MarshalJSON() ([]byte, error) {
 	if t == "" {
 		t = TypeOfURL(i.URL)
 	}
-	return json.Marshal(map[string]any{t: plain(i)})
+	p := plain(i)
+	p.URL = inputURL(i)
+	return json.Marshal(map[string]any{t: p})
 }
 
 func (i Input) APIShape() map[string]any {
 	b, err := json.Marshal(i)
 	if err != nil {
-		return map[string]any{"url": i.URL}
+		return map[string]any{"url": inputURL(i)}
 	}
 	var grouped map[string]map[string]any
 	if err := json.Unmarshal(b, &grouped); err != nil {
-		return map[string]any{"url": i.URL}
+		return map[string]any{"url": inputURL(i)}
 	}
 	for t, body := range grouped {
 		body["type"] = t
 		return body
 	}
-	return map[string]any{"url": i.URL}
+	return map[string]any{"url": inputURL(i)}
 }
 
 func (s *Stream) APIView() map[string]any {
@@ -169,7 +213,7 @@ func TypeOfURL(raw string) string {
 		return "tshttp"
 	}
 	switch strings.ToLower(u.Scheme) {
-	case "http", "https", "tshttp":
+	case "http", "https", "tshttp", "tshttps":
 		return "tshttp"
 	case "hls", "hlss":
 		return "hls"
@@ -256,6 +300,8 @@ type Stream struct {
 	Name             string            `json:"name"`
 	Comment          string            `json:"comment,omitempty"`
 	Title            string            `json:"title,omitempty"`
+	Keyword          string            `json:"keyword,omitempty"`
+	Disabled         bool              `json:"disabled,omitempty"`
 	Static           bool              `json:"static,omitempty"`
 	Ondemand         bool              `json:"ondemand,omitempty"`
 	Inputs           []Input           `json:"inputs"`
@@ -280,6 +326,7 @@ type Stream struct {
 	Pushes           []Push            `json:"pushes,omitempty"`
 	JpegSignKey      string            `json:"jpeg_snapshot_sign_key,omitempty"`
 	NoMedia          bool              `json:"nomedia,omitempty"`
+	Extras           []*Node           `json:"extras,omitempty"`
 }
 
 func (s *Stream) Duration() float64 {
@@ -297,6 +344,7 @@ func (s *Stream) SegmentCountOrDefault() int {
 }
 
 type Push struct {
+	Name    string `json:"name,omitempty"`
 	URL     string `json:"url"`
 	Comment string `json:"comment,omitempty"`
 }

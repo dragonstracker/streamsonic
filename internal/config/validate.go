@@ -15,7 +15,7 @@ func Validate(c *Config) error {
 		if !nameRe.MatchString(name) {
 			return fmt.Errorf("stream name %q is not a valid identifier", name)
 		}
-		if len(s.Inputs) == 0 && !s.NoMedia && !s.Ondemand {
+		if len(s.Inputs) == 0 && !s.NoMedia && !s.Ondemand && !s.Disabled {
 			return fmt.Errorf("stream %q has no inputs", name)
 		}
 		for _, in := range s.Inputs {

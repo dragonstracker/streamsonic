@@ -69,10 +69,14 @@ func (c *Config) applyNode(n *Node) error {
 			return err
 		}
 		c.Sinks = append(c.Sinks, s)
-	case "stream":
+	case "stream", "ondemand":
 		s, err := parseStream(n)
 		if err != nil {
 			return err
+		}
+		s.Keyword = n.Name
+		if n.Name == "ondemand" {
+			s.Ondemand = true
 		}
 		if _, dup := c.Streams[s.Name]; dup {
 			return fmt.Errorf("line %d: stream %q is declared twice", n.Line, s.Name)
@@ -295,6 +299,8 @@ func streamOption(s *Stream, ch *Node) error {
 		s.Static = boolArg(ch)
 	case "ondemand":
 		s.Ondemand = boolArg(ch)
+	case "disabled":
+		s.Disabled = boolArg(ch)
 	case "nomedia":
 		s.NoMedia = boolArg(ch)
 	case "title":
@@ -362,7 +368,7 @@ func streamOption(s *Stream, ch *Node) error {
 	case "on_publish":
 		s.OnPublish = parseAuthSpec(ch)
 	case "push":
-		s.Pushes = append(s.Pushes, Push{URL: ch.Arg(0)})
+		s.Pushes = append(s.Pushes, parsePush(ch))
 	case "jpeg_snapshot_sign_key":
 		s.JpegSignKey = ch.Arg(0)
 	case "labels":
@@ -377,9 +383,32 @@ func streamOption(s *Stream, ch *Node) error {
 			s.Labels[ch.Args[0]] = ch.Args[1]
 		}
 	default:
-		return fmt.Errorf("line %d: unknown stream option %q", ch.Line, ch.Name)
+		s.Extras = append(s.Extras, ch)
 	}
 	return nil
+}
+
+func parsePush(ch *Node) Push {
+	p := Push{}
+	if ch.Block {
+		p.Name = ch.Arg(0)
+		for _, o := range ch.Children {
+			switch o.Name {
+			case "url":
+				p.URL = o.Arg(0)
+			case "comment":
+				p.Comment = o.Arg(0)
+			}
+		}
+		return p
+	}
+	if len(ch.Args) >= 2 {
+		p.Name = ch.Args[0]
+		p.URL = ch.Args[1]
+		return p
+	}
+	p.URL = ch.Arg(0)
+	return p
 }
 
 func parseInput(ch *Node) (Input, error) {

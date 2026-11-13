@@ -527,6 +527,9 @@ func (s *Stream) Snapshot() map[string]any {
 	}
 	if cfg != nil {
 		out["comment"] = cfg.Comment
+		out["title"] = cfg.Title
+		out["ondemand"] = cfg.Ondemand
+		out["disabled"] = cfg.Disabled
 	}
 	if s.arch != nil {
 		out["dvr"] = map[string]any{
@@ -619,6 +622,23 @@ func (m *Manager) Restart(name string) bool {
 	return true
 }
 
+func (m *Manager) EnsureStarted(name string) *Stream {
+	m.mu.RLock()
+	s := m.streams[name]
+	parent := m.parent
+	m.mu.RUnlock()
+	if s == nil {
+		return nil
+	}
+	if cfg := s.Config(); cfg != nil && cfg.Disabled {
+		return s
+	}
+	if parent != nil {
+		s.Start(parent)
+	}
+	return s
+}
+
 func (m *Manager) Stop() {
 	m.mu.Lock()
 	streams := make([]*Stream, 0, len(m.streams))
@@ -644,7 +664,7 @@ func (m *Manager) Apply(cfg *config.Config) {
 		s := newStream(m, sc)
 		m.attachDVR(s, sc)
 		m.streams[name] = s
-		if m.parent != nil {
+		if m.parent != nil && !sc.Disabled && !sc.Ondemand {
 			s.Start(m.parent)
 		}
 	}

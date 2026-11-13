@@ -81,6 +81,7 @@ func (s *Server) serveMediaPath(w http.ResponseWriter, r *http.Request, name, fi
 	if !s.authorizePlay(w, r, st) {
 		return
 	}
+	st = s.mgr.EnsureStarted(name)
 	proto := "hls"
 	if strings.HasSuffix(file, ".mpd") {
 		proto = "dash"

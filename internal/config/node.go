@@ -66,9 +66,6 @@ func tokenize(src string) ([]token, error) {
 				if d == ' ' || d == '\t' || d == '\r' || d == '\n' || d == '{' || d == '}' || d == ';' || d == '"' {
 					break
 				}
-				if d == '#' {
-					break
-				}
 				i++
 			}
 			if i > start {
@@ -80,11 +77,11 @@ func tokenize(src string) ([]token, error) {
 }
 
 type Node struct {
-	Name     string
-	Args     []string
-	Children []*Node
-	Block    bool
-	Line     int
+	Name     string   `json:"name"`
+	Args     []string `json:"args,omitempty"`
+	Children []*Node  `json:"children,omitempty"`
+	Block    bool     `json:"block,omitempty"`
+	Line     int      `json:"-"`
 }
 
 func (n *Node) Arg(i int) string {

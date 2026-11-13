@@ -15,6 +15,36 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   GitHub release for the pushed tag.
 - CI workflow running `gofmt`, `go vet`, `go test`, a full build and `shellcheck`.
 
+## [1.2.0] - 2026-11-13
+
+### Added
+
+- Native `ondemand <name> { … }` blocks. They parse as streams, render back with the
+  `ondemand` keyword and start only when a player requests their manifest.
+- `disabled` on streams: disabled entries are kept in the config, listed in the UI and
+  never started.
+- `push <name> { url …; }` blocks are parsed and rendered verbatim.
+- Directives that this build does not act on (`transcoder`, `drm`, `epg`, `meta`,
+  `thumbnails`, `domain`, `logo`, `substyle`) are preserved in a lossless passthrough
+  list, re-emitted in the same order and exposed to the UI, so a full Flussonic
+  config round-trips without losing a line.
+- Stream list shows the `title` (with the stream name beneath it), the real
+  always-started/on-demand mode, the disabled state and whether a transcoder is
+  configured, and honours every Sort By column.
+
+### Changed
+
+- `input` schemes follow Flussonic semantics: `tshttp://` and `hls://` fetch over
+  HTTP, `tshttps://` and `hlss://` over HTTPS, and the wrapper is restored when the
+  config is written back.
+- `#` is only a comment when it starts a token, so `size=960x-1:fit:#000000` parses.
+
+### Fixed
+
+- Loading a production config no longer aborts on the first unknown stream directive.
+- Idle on-demand streams cost almost nothing: 999 configured streams boot in ~12 MB
+  of RSS with 6 goroutines.
+
 ## [1.1.3] - 2026-11-13
 
 ### Added
