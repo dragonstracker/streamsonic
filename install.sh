@@ -126,7 +126,7 @@ NoNewPrivileges=yes
 ProtectSystem=full
 ProtectHome=yes
 PrivateTmp=yes
-ReadWritePaths=${DATA_DIR}
+ReadWritePaths=${DATA_DIR} ${CONF_DIR}
 
 [Install]
 WantedBy=multi-user.target

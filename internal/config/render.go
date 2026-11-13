@@ -127,6 +127,9 @@ func streamNode(s *Stream) *Node {
 	}
 	for _, in := range s.Inputs {
 		args := []string{in.URL}
+		if in.Type != "" && in.Type != TypeOfURL(in.URL) {
+			args = []string{in.Type, in.URL}
+		}
 		if in.Priority != 0 {
 			args = append(args, fmt.Sprintf("priority=%d", in.Priority))
 		}

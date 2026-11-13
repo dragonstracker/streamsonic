@@ -20,7 +20,7 @@ import (
 	"streamsonic/internal/stream"
 )
 
-var version = "1.1.2"
+var version = "1.1.3"
 
 const defaultConfig = `# streamsonic configuration
 http {

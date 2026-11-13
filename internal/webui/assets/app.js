@@ -436,8 +436,8 @@
           '<h3>Live preview</h3>' +
           '<div class="player" id="player"><div class="player-status">waiting for clients</div></div>' +
           '<div class="code-list" style="margin-top:12px">' +
-            '<code>' + base + '/stream/' + esc(name) + '/index.m3u8</code>' +
-            '<code>' + base + '/stream/' + esc(name) + '/index.mpd</code>' +
+            '<code>' + base + '/' + esc(name) + '/index.m3u8</code>' +
+            '<code>' + base + '/' + esc(name) + '/index.mpd</code>' +
           '</div>' +
         '</div>' +
       '</div>' +
@@ -504,10 +504,10 @@
     host.innerHTML = '<div class="panel"><h2>Delivery</h2>' +
       '<div class="code-list">' +
         ['index.m3u8', 'index.mpd', 'info.json', 'ranges.json'].map((f) =>
-          '<code>' + base + '/stream/' + esc(name) + '/' + f + '</code>').join('') +
+          '<code>' + base + '/' + esc(name) + '/' + f + '</code>').join('') +
       '</div>' +
       '<h2 style="margin-top:18px">Embed HTML player on your website</h2>' +
-      '<div class="field"><textarea rows="5" readonly>&lt;video src="' + base + '/stream/' + esc(name) + '/index.m3u8" controls playsinline&gt;&lt;/video&gt;</textarea></div>' +
+      '<div class="field"><textarea rows="5" readonly>&lt;video src="' + base + '/' + esc(name) + '/index.m3u8" controls playsinline&gt;&lt;/video&gt;</textarea></div>' +
       '</div>';
   }
 
@@ -829,7 +829,7 @@
 
       let manifest;
       try {
-        manifest = await (await fetch('/stream/' + encodeURIComponent(this.name) + '/preview.json')).json();
+        manifest = await (await fetch('/' + encodeURIComponent(this.name) + '/preview.json')).json();
       } catch {
         this.status.textContent = 'stream is not ready';
         return;
@@ -857,7 +857,7 @@
       this.sb.mode = 'segments';
       this.sb.addEventListener('updateend', () => this.pump());
       try {
-        const init = await (await fetch('/stream/' + encodeURIComponent(this.name) + '/preview-init.mp4')).arrayBuffer();
+        const init = await (await fetch('/' + encodeURIComponent(this.name) + '/preview-init.mp4')).arrayBuffer();
         this.sb.appendBuffer(init);
         this.status.textContent = 'buffering…';
       } catch {
@@ -870,7 +870,7 @@
     async poll() {
       if (this.dead) return;
       try {
-        const m = await (await fetch('/stream/' + encodeURIComponent(this.name) + '/preview.json')).json();
+        const m = await (await fetch('/' + encodeURIComponent(this.name) + '/preview.json')).json();
         for (const s of m.segments || []) {
           if (s.n > this.last && !this.queue.includes(s.n)) this.queue.push(s.n);
         }
@@ -884,7 +884,7 @@
       const n = this.queue.shift();
       this.busy = true;
       try {
-        const res = await fetch('/stream/' + encodeURIComponent(this.name) + '/preview-' + n + '.m4s');
+        const res = await fetch('/' + encodeURIComponent(this.name) + '/preview-' + n + '.m4s');
         if (!res.ok) throw new Error('segment ' + n + ' unavailable');
         const buf = await res.arrayBuffer();
         this.sb.appendBuffer(buf);

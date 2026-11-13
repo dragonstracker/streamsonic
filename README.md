@@ -92,8 +92,8 @@ stream channel-1 {
 Play it:
 
 ```
-http://localhost:8080/stream/channel-1/index.m3u8
-http://localhost:8080/stream/channel-1/index.mpd
+http://localhost:8080/channel-1/index.m3u8
+http://localhost:8080/channel-1/index.mpd
 http://localhost:8080/
 ```
 
@@ -189,7 +189,8 @@ GOP cannot produce shorter segments; the server never breaks an access unit.
 
 ## Delivery URLs
 
-All media lives under `/stream/<name>/`.
+Media lives at the Flussonic root paths `/<name>/index.m3u8`, `/<name>/index.mpd`,
+`/<name>/preview.json` and the segment files beside them. `/stream/<name>/` remains an alias.
 
 | Path | Description |
 | --- | --- |
@@ -284,7 +285,7 @@ Logs go to the journal: `journalctl -u streamsonic -f`.
 Reverse proxy example (HLS needs no buffering):
 
 ```
-location /stream/ {
+location ~ ^/([^/]+)/(index\.m3u8|index\.mpd|preview\.json)$ {
     proxy_pass http://127.0.0.1:8080;
     proxy_buffering off;
     proxy_http_version 1.1;

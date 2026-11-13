@@ -15,6 +15,27 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   GitHub release for the pushed tag.
 - CI workflow running `gofmt`, `go vet`, `go test`, a full build and `shellcheck`.
 
+## [1.1.3] - 2026-11-13
+
+### Added
+
+- Media resources are also served at the Flussonic root paths `/<stream>/<file>`
+  (`index.m3u8`, `index.mpd`, `preview.json`, `preview-init.mp4`, `preview-<n>.m4s`,
+  `video-<n>.m4s`, `audio-<n>.m4s`, `dvr-*.ts`, `timeshift_*`, `rewind-*`,
+  `info.json`, `media_info.json`, `ranges.json`, plus nested `*.ts` segments).
+  `/stream/<stream>/<file>` stays available as an alias, and the admin player now
+  uses the root form.
+
+### Fixed
+
+- Stream input JSON accepts an explicit `type`, and non-inferable types survive the
+  config rewrite. An HLS playlist URL stored as `input hls https://…m3u8;` no longer
+  collapses to `tshttp` and fails with `EOF`.
+- `hls://`, `tshttp://`, `rtsp://` style wrapper prefixes are stripped when the inner
+  URL carries its own scheme, matching Flussonic config syntax.
+- The systemd unit grants write access to `/etc/streamsonic`, so API and UI config
+  edits persist instead of failing with `read-only file system`.
+
 ## [1.1.2] - 2026-11-13
 
 ### Fixed

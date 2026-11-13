@@ -37,6 +37,42 @@ func (s *Server) handleMedia(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusNotFound, "stream not found")
 		return
 	}
+	s.serveMediaPath(w, r, name, file)
+}
+
+func (s *Server) handleRoot(w http.ResponseWriter, r *http.Request) {
+	p := strings.TrimPrefix(r.URL.Path, "/")
+	if p != "" {
+		name, file, ok := strings.Cut(p, "/")
+		if ok && name != "" && looksLikeMedia(file) {
+			if r.Method != http.MethodGet && r.Method != http.MethodHead {
+				writeErr(w, http.StatusMethodNotAllowed, "method not allowed")
+				return
+			}
+			s.serveMediaPath(w, r, name, file)
+			return
+		}
+	}
+	s.uiHandler().ServeHTTP(w, r)
+}
+
+func looksLikeMedia(file string) bool {
+	if file == "" {
+		return false
+	}
+	if file == "info.json" || file == "media_info.json" || file == "ranges.json" || file == "preview.json" {
+		return true
+	}
+	for _, ext := range []string{".m3u8", ".mpd", ".mp4", ".m4s", ".ts"} {
+		if strings.HasSuffix(file, ext) {
+			return true
+		}
+	}
+	return strings.HasPrefix(file, "archive-") || strings.HasPrefix(file, "timeshift_") ||
+		strings.HasPrefix(file, "rewind-") || strings.HasPrefix(file, "dvr-")
+}
+
+func (s *Server) serveMediaPath(w http.ResponseWriter, r *http.Request, name, file string) {
 	st := s.mgr.Get(name)
 	if st == nil {
 		writeErr(w, http.StatusNotFound, "stream not found")

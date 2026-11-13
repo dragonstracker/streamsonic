@@ -267,7 +267,9 @@ func parseStream(n *Node) (*Stream, error) {
 	}
 	if !n.Block {
 		if u := n.Arg(1); u != "" {
-			s.Inputs = append(s.Inputs, Input{Type: TypeOfURL(u), URL: u})
+			in := Input{Type: TypeOfURL(u), URL: u}
+			normalizeInputURL(&in)
+			s.Inputs = append(s.Inputs, in)
 		}
 		return s, nil
 	}
@@ -394,6 +396,7 @@ func parseInput(ch *Node) (Input, error) {
 	if in.Type == "" {
 		in.Type = TypeOfURL(in.URL)
 	}
+	normalizeInputURL(&in)
 	for _, a := range args[1:] {
 		k, v, ok := strings.Cut(a, "=")
 		if !ok {

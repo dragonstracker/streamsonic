@@ -2,7 +2,7 @@
 
 Base path: `/streamer/api/v3`
 
-Media delivery lives outside the API prefix, under `/stream/{name}/`.
+Media delivery lives outside the API prefix, at `/{name}/` with `/stream/{name}/` kept as an alias.
 See [Delivery endpoints](#delivery-endpoints).
 
 ## Authentication
@@ -298,7 +298,7 @@ All sessions, optionally filtered by stream. Same object shape as
 
 ## Delivery endpoints
 
-Prefix: `/stream/{name}/`
+Prefix: `/{name}/` (alias: `/stream/{name}/`)
 
 | Path | Content type | Notes |
 | --- | --- | --- |

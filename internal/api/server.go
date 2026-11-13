@@ -52,7 +52,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET "+APIPrefix+"/version", s.versionHandler)
 
 	mux.HandleFunc("/stream/", s.handleMedia)
-	mux.Handle("/", s.uiHandler())
+	mux.HandleFunc("/", s.handleRoot)
 	return mux
 }
 

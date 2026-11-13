@@ -72,12 +72,6 @@ func (i *Input) UnmarshalJSON(b []byte) error {
 	if err := json.Unmarshal(b, &raw); err != nil {
 		return err
 	}
-	if u, ok := raw["url"]; ok {
-		if err := json.Unmarshal(u, &i.URL); err != nil {
-			return err
-		}
-		i.Type = TypeOfURL(i.URL)
-	}
 	for _, t := range inputTypes {
 		v, ok := raw[t]
 		if !ok {
@@ -101,10 +95,30 @@ func (i *Input) UnmarshalJSON(b []byte) error {
 		return err
 	}
 	*i = Input(p)
+	if t, ok := raw["type"]; ok {
+		var s string
+		if err := json.Unmarshal(t, &s); err != nil {
+			return fmt.Errorf("type: %w", err)
+		}
+		s = strings.ToLower(strings.TrimSpace(s))
+		if s != "" {
+			i.Type = s
+		}
+	}
 	if i.Type == "" {
 		i.Type = TypeOfURL(i.URL)
 	}
+	normalizeInputURL(i)
 	return nil
+}
+
+func normalizeInputURL(i *Input) {
+	if i.Type == "" || i.URL == "" {
+		return
+	}
+	if rest, ok := strings.CutPrefix(i.URL, i.Type+"://"); ok && strings.Contains(rest, "://") {
+		i.URL = rest
+	}
 }
 
 func (i Input) MarshalJSON() ([]byte, error) {
