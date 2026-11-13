@@ -6,6 +6,26 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.2.6] - 2026-11-13
+
+### Changed
+
+- The admin panel is rebuilt on the Flussonic design system: the imported three-weight
+  `CustomFont` face, the `icomoon_admin` icon font, the `#001F77` navigation rail at
+  65 px, the `#002DAB` primary and active-item fill, the 58 px page head with 21 px
+  title, 34 px tabs with `#F2F4F7` inactive fill, the 33 px `#98A2B2` sort control and
+  the 108 px stream row with the same five columns as the original.
+- Icons across the rail, tabs and rows come from the original icon font instead of
+  inline SVG, so shapes match at every size.
+- Signing in validates the credentials against `server/stats` instead of downloading
+  the whole stream catalog.
+
+### Fixed
+
+- A `401` from the API no longer sends `WWW-Authenticate: Basic`, so Chrome and Edge
+  stop opening a native sign-in dialog over the panel. The SPA login form handles the
+  credentials, and `curl -u login:password` still authenticates.
+
 ## [1.2.5] - 2026-11-13
 
 ### Fixed

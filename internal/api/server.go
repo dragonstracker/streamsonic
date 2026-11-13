@@ -80,7 +80,7 @@ func (s *Server) auth(h http.HandlerFunc) http.HandlerFunc {
 				return
 			}
 		}
-		w.Header().Set("WWW-Authenticate", `Basic realm="streamsonic"`)
+		w.Header().Set("Cache-Control", "no-store")
 		writeErr(w, http.StatusUnauthorized, "unauthorized")
 	}
 }
