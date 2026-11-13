@@ -4,3 +4,5 @@
 *.go text eol=lf
 *.md text eol=lf
 *.woff2 binary
+Makefile text eol=lf
+go.mod text eol=lf

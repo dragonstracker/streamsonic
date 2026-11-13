@@ -15,6 +15,22 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   GitHub release for the pushed tag.
 - CI workflow running `gofmt`, `go vet`, `go test`, a full build and `shellcheck`.
 
+## [1.1.1] - 2026-11-13
+
+Release pipeline fix. The 1.1.0 tag produced no release assets because the
+`dvr/` ignore rule also matched `internal/dvr/`, so `storage.go` never entered
+the repository and every matrix build failed.
+
+### Fixed
+
+- `.gitignore` now anchors the runtime DVR directory (`/dvr/`) so source packages
+  under `internal/` are always tracked.
+- Release archives use the exact asset names the installer resolves:
+  `streamsonic-linux-amd64`, `streamsonic-linux-arm64`, `streamsonic-linux-armv6`,
+  `streamsonic-darwin-amd64`, `streamsonic-darwin-arm64`.
+- All Go sources carry LF line endings and no byte-order mark, so `gofmt -l`
+  reports a clean tree in CI.
+
 ## [1.1.0] - 2026-11-13
 
 Admin UI rebuilt as a 1:1 functional match of the reference interface, using design

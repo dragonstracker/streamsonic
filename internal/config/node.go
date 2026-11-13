@@ -79,7 +79,6 @@ func tokenize(src string) ([]token, error) {
 	return out, nil
 }
 
-// Node is one directive: `name args...;` or `name args... { children }`.
 type Node struct {
 	Name     string
 	Args     []string
@@ -211,7 +210,6 @@ func quote(s string) string {
 	return s
 }
 
-// Render serialises a node tree back to configuration text.
 func Render(nodes []*Node) string {
 	var b strings.Builder
 	renderNodes(&b, nodes, 0)

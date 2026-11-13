@@ -18,7 +18,7 @@ env:
 
 jobs:
   build:
-    name: build ${{ matrix.goos }}-${{ matrix.goarch }}
+    name: build ${{ matrix.asset }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -26,15 +26,20 @@ jobs:
         include:
           - goos: linux
             goarch: amd64
+            asset: linux-amd64
           - goos: linux
             goarch: arm64
+            asset: linux-arm64
           - goos: linux
             goarch: arm
             goarm: "6"
+            asset: linux-armv6
           - goos: darwin
             goarch: amd64
+            asset: darwin-amd64
           - goos: darwin
             goarch: arm64
+            asset: darwin-arm64
 
     steps:
       - uses: actions/checkout@v4
@@ -60,7 +65,7 @@ jobs:
           GOARM: ${{ matrix.goarm }}
           CGO_ENABLED: "0"
         run: |
-          NAME="${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.goarm }}"
+          NAME="${{ matrix.asset }}"
           go build -trimpath \
             -ldflags="-s -w -X main.version=${{ steps.version.outputs.value }}" \
             -o "dist/streamsonic" ./cmd/streamsonic
@@ -71,7 +76,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: streamsonic-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.goarm }}
+          name: streamsonic-${{ matrix.asset }}
           path: dist/streamsonic-*.tar.gz
           if-no-files-found: error
 

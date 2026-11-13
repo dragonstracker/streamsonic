@@ -5,8 +5,6 @@ import (
 	"errors"
 )
 
-// TrackMuxer produces fragmented MP4 for one track: an init segment plus
-// moof+mdat fragments. Timescale is 90000 for video, the sample rate for audio.
 type TrackMuxer struct {
 	track   *Track
 	trackID uint32
@@ -130,8 +128,6 @@ func (m *TrackMuxer) buildTraf(frames []Frame) ([]byte, []byte, uint64) {
 	return traf, data, total
 }
 
-// MultiMuxer writes one fragmented MP4 stream carrying both video and audio,
-// which lets a browser play the stream with a single SourceBuffer.
 type MultiMuxer struct {
 	video *TrackMuxer
 	audio *TrackMuxer

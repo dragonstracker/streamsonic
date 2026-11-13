@@ -69,7 +69,6 @@ func streamType(c Codec) byte {
 	return 0x06
 }
 
-// WritePSI emits a PAT/PMT pair. Call it at the start of every segment.
 func (m *TSMuxer) WritePSI() error {
 	m.buf = m.buf[:0]
 	m.packet(pidPAT, true, append([]byte{0x00}, m.pat()...), nil)

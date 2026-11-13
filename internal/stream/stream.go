@@ -77,7 +77,6 @@ func (s *Stream) DASHVideo() *packager.Ring { return s.dashV }
 func (s *Stream) DASHAudio() *packager.Ring { return s.dashA }
 func (s *Stream) Preview() *packager.Ring   { return s.preview }
 
-// Codecs returns the MSE codec string for the muxed preview stream.
 func (s *Stream) Codecs() string {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -608,7 +607,6 @@ func (m *Manager) Start(ctx context.Context) {
 	m.Apply(m.cfg)
 }
 
-// Restart restarts one stream inside the manager lifetime context.
 func (m *Manager) Restart(name string) bool {
 	m.mu.RLock()
 	s := m.streams[name]

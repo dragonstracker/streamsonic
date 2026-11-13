@@ -11,9 +11,13 @@ When `edit_auth` is configured, every route below `/streamer/api/v3` requires ei
 
 ```
 Authorization: Basic base64(login:password)
+Authorization: Bearer base64(login:password)
 Authorization: Bearer <password>
 ?token=<password>
 ```
+
+The `Bearer base64(login:password)` form is what the admin SPA sends, so it also
+works from scripts that reuse a captured browser session.
 
 `/ui_settings`, `/version`, `/monitoring/*` and all media routes are unauthenticated.
 Playback can be gated separately with the stream `on_play` hook.
@@ -129,12 +133,21 @@ Array of stream snapshots:
       "input_errors": 0, "input_switches": 0, "bitrate": 177000,
       "last_publish": 1794570031105, "hls_segments": 6, "dash_segments": 6
     },
-    "dvr": { "from": "...", "to": "...", "size": 295724, "entries": 3 }
+    "dvr": { "from": "...", "to": "...", "size": 295724, "entries": 3 },
+    "config": {
+      "name": "channel-1",
+      "inputs": [ { "url": "tshttp://origin/live.ts", "type": "tshttp" } ],
+      "segment_duration": 6,
+      "segment_count": 6
+    }
   }
 ]
 ```
 
 `status` is `online`, `offline` or `error`. `last_error` appears when set.
+`config` is the REST projection of the stream definition, so the admin UI renders
+the list without a second request per row. Inputs are flat (`{"url": ..., "type":
+...}`) rather than the type-keyed form used by the configuration file.
 
 ### POST /streams
 

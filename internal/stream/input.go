@@ -16,7 +16,6 @@ import (
 	"streamsonic/internal/config"
 )
 
-// OpenSource connects to one ingest input and returns its byte stream.
 func OpenSource(ctx context.Context, in config.Input) (io.ReadCloser, error) {
 	kind := in.Type
 	if kind == "" {

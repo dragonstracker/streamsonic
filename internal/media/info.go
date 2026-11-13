@@ -62,7 +62,6 @@ func (t *Track) String() string {
 	return fmt.Sprintf("%s %s", t.Type, t.Codec)
 }
 
-// Frame is one coded access unit (video) or audio frame.
 type Frame struct {
 	PID      uint16
 	Kind     string

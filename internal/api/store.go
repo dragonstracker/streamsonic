@@ -9,7 +9,6 @@ import (
 	"streamsonic/internal/config"
 )
 
-// Store holds the live configuration and persists every accepted change.
 type Store struct {
 	mu   sync.RWMutex
 	cfg  *config.Config

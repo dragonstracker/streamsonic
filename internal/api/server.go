@@ -105,8 +105,6 @@ func tokenOf(r *http.Request) string {
 	return ""
 }
 
-// bearerCredentials decodes the Flussonic admin convention:
-// Authorization: Bearer base64(login:password)
 func bearerCredentials(r *http.Request) (string, string, bool) {
 	h := r.Header.Get("Authorization")
 	if !strings.HasPrefix(h, "Bearer ") {

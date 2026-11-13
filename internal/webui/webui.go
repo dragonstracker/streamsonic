@@ -18,8 +18,6 @@ func content() fs.FS {
 	return sub
 }
 
-// Handler serves the admin SPA at both /admin/ and the site root.
-// Assets live under /admin/assets/ so the layout matches Flussonic's URLs.
 func Handler() http.Handler {
 	root := content()
 	fileServer := http.FileServer(http.FS(root))

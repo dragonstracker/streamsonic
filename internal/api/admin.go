@@ -108,9 +108,6 @@ func (s *Server) serverStats(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// uiSettings reproduces the Flussonic white-label theme contract.
-// The admin SPA reads title, brand, colors, fonts, favicons and menu_items
-// from this endpoint, so a deployment can be re-branded without a rebuild.
 func (s *Server) uiSettings(w http.ResponseWriter, r *http.Request) {
 	cfg := s.store.Current()
 	writeJSON(w, http.StatusOK, map[string]any{

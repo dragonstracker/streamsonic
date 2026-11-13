@@ -241,7 +241,6 @@ func sortedKeys[V any](m map[string]V) []string {
 	return out
 }
 
-// Snapshot is the JSON shape of the whole configuration.
 type Snapshot struct {
 	HTTP         HTTP           `json:"http"`
 	AdminLogin   string         `json:"edit_auth,omitempty"`
@@ -272,7 +271,6 @@ func (c *Config) Snapshot() Snapshot {
 	return s
 }
 
-// APIView renders the snapshot in the REST form used by the v3 API.
 func (s Snapshot) APIView() map[string]any {
 	out := map[string]any{
 		"http":        s.HTTP,

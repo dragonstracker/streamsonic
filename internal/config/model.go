@@ -45,8 +45,6 @@ func (c *Config) StreamNames() []string {
 	return out
 }
 
-// Input is one ingest source. It accepts both the API form
-// {"tshttp":{"url":"..."}} and the config form `input tshttp://...`.
 type Input struct {
 	Type                    string            `json:"-"`
 	URL                     string            `json:"url"`
@@ -118,8 +116,6 @@ func (i Input) MarshalJSON() ([]byte, error) {
 	return json.Marshal(map[string]any{t: plain(i)})
 }
 
-// APIShape renders an input in the REST form used by the v3 API:
-// a flat object carrying "url" plus its options.
 func (i Input) APIShape() map[string]any {
 	b, err := json.Marshal(i)
 	if err != nil {
@@ -136,8 +132,6 @@ func (i Input) APIShape() map[string]any {
 	return map[string]any{"url": i.URL}
 }
 
-// APIView renders the stream in the REST form used by the v3 API,
-// where inputs are a flat array instead of the type-keyed config shape.
 func (s *Stream) APIView() map[string]any {
 	b, err := json.Marshal(s)
 	if err != nil {
@@ -155,7 +149,6 @@ func (s *Stream) APIView() map[string]any {
 	return out
 }
 
-// TypeOfURL maps a scheme to an ingest type.
 func TypeOfURL(raw string) string {
 	u, err := url.Parse(raw)
 	if err != nil {

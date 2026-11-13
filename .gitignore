@@ -3,7 +3,8 @@ bin/
 *.exe
 *.test
 *.out
-dvr/
+/dvr/
+/dvr-data/
 *.log
 .DS_Store
 .idea/

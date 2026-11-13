@@ -5,7 +5,6 @@ import (
 	"time"
 )
 
-// Segment is one closed chunk of media addressed by its wall-clock start time.
 type Segment struct {
 	Seq      int
 	From     time.Time
@@ -37,8 +36,6 @@ func (s *Segment) Audio() []Frame {
 	return out
 }
 
-// Segmenter cuts a frame stream into GOP aligned segments of roughly the
-// requested duration. Timing is driven by video PTS when present.
 type Segmenter struct {
 	info     *MediaInfo
 	duration time.Duration

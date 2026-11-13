@@ -9,7 +9,6 @@ var ErrNoSync = errors.New("media: no start code found")
 
 var ErrIncomplete = errors.New("media: incomplete frame")
 
-// BitReader is a big-endian bit reader used by the codec header parsers.
 type BitReader struct {
 	buf []byte
 	pos int
@@ -66,7 +65,6 @@ func (r *BitReader) SE() int {
 
 func (r *BitReader) Err() bool { return r.pos > len(r.buf)*8 }
 
-// NAL is one Annex-B network abstraction layer unit.
 type NAL struct {
 	Type   byte
 	Start  int
@@ -74,12 +72,8 @@ type NAL struct {
 	Header int
 }
 
-// SplitNALs enumerates the complete Annex-B NAL units in buf. A trailing unit
-// without a following start code is omitted because its end is not yet known.
 func SplitNALs(buf []byte, hevc bool) []NAL { return splitNALs(buf, hevc, false) }
 
-// SplitNALsAll is SplitNALs for a finished access unit: the last unit runs to
-// the end of the buffer.
 func SplitNALsAll(buf []byte, hevc bool) []NAL { return splitNALs(buf, hevc, true) }
 
 func splitNALs(buf []byte, hevc bool, complete bool) []NAL {
@@ -130,7 +124,6 @@ func isVCL(typ byte, hevc bool) bool {
 	return typ >= 1 && typ <= 5
 }
 
-// IsPictureStart reports whether a NAL begins a new access unit.
 func IsPictureStart(buf []byte, n NAL, hevc bool) bool {
 	if !isVCL(n.Type, hevc) {
 		return false
@@ -355,7 +348,6 @@ func boolToInt(b bool) int {
 	return 0
 }
 
-// ADTSFrame is one AAC frame from an ADTS elementary stream.
 type ADTSFrame struct {
 	Data       []byte
 	Profile    int

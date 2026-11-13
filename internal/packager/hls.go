@@ -6,7 +6,6 @@ import (
 	"time"
 )
 
-// SegmentName renders the timestamp based path used by every playlist.
 func SegmentName(from time.Time, seq int) string {
 	return fmt.Sprintf("%04d/%02d/%02d/%02d/%02d/%02d-%05d",
 		from.Year(), int(from.Month()), from.Day(), from.Hour(), from.Minute(), from.Second(), seq%100000)
@@ -42,7 +41,6 @@ func MediaPlaylist(r *Ring, segName func(*Chunk) string) string {
 	return b.String()
 }
 
-// LivePlaylist is MediaPlaylist without the end marker.
 func LivePlaylist(r *Ring, segName func(*Chunk) string) string {
 	return strings.ReplaceAll(MediaPlaylist(r, segName), "#EXT-X-ENDLIST\n", "")
 }

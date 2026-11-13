@@ -5,7 +5,6 @@ import (
 	"time"
 )
 
-// Chunk is one packaged media segment.
 type Chunk struct {
 	Seq      int
 	Start    int64
@@ -15,7 +14,6 @@ type Chunk struct {
 	Disc     bool
 }
 
-// Ring keeps the live window for one rendition.
 type Ring struct {
 	mu      sync.RWMutex
 	chunks  []*Chunk

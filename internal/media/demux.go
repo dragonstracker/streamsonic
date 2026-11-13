@@ -30,7 +30,6 @@ type trackState struct {
 	audioOn  bool
 }
 
-// Demuxer converts an MPEG-TS byte stream into coded frames.
 type Demuxer struct {
 	br      *bufio.Reader
 	pmtPIDs map[uint16]bool
