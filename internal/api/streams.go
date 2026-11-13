@@ -8,17 +8,41 @@ import (
 	"time"
 
 	"streamsonic/internal/config"
+	"streamsonic/internal/stream"
 )
 
 func (s *Server) listStreams(w http.ResponseWriter, r *http.Request) {
-	list := s.mgr.List()
-	out := make([]map[string]any, 0, len(list))
-	for _, st := range list {
-		snap := st.Snapshot()
-		snap["config"] = st.Config().APIView()
-		out = append(out, snap)
+	started := time.Now()
+	all := sortedStreams(s.mgr.List())
+	list := make([]*stream.Stream, 0, len(all))
+	q := r.URL.Query()
+	for _, st := range all {
+		if matchStreamFilters(st, q) {
+			list = append(list, st)
+		}
 	}
-	writeJSON(w, http.StatusOK, out)
+	limit := parseLimit(r, 100)
+	offset := parseCursor(r)
+	if offset < 0 {
+		offset = 0
+	}
+	if offset > len(list) {
+		offset = len(list)
+	}
+	end := offset + limit
+	if end > len(list) {
+		end = len(list)
+	}
+	page := list[offset:end]
+	out := make([]map[string]any, 0, len(page))
+	for i, st := range page {
+		out = append(out, fluStreamView(st, offset+i))
+	}
+	next := ""
+	if end < len(list) && end > 0 {
+		next = nextCursor(end - 1)
+	}
+	s.collection(w, "streams", out, len(list), next, int(time.Since(started).Milliseconds()))
 }
 
 func (s *Server) getStream(w http.ResponseWriter, r *http.Request) {
@@ -28,9 +52,7 @@ func (s *Server) getStream(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusNotFound, "stream not found")
 		return
 	}
-	snap := st.Snapshot()
-	snap["config"] = st.Config().APIView()
-	writeJSON(w, http.StatusOK, snap)
+	writeJSON(w, http.StatusOK, fluStreamView(st, 0))
 }
 
 func (s *Server) createStream(w http.ResponseWriter, r *http.Request) {
@@ -133,19 +155,18 @@ func (s *Server) streamStats(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusNotFound, "stream not found")
 		return
 	}
-	snap := st.Snapshot()
-	snap["config"] = st.Config().APIView()
-	writeJSON(w, http.StatusOK, snap)
+	writeJSON(w, http.StatusOK, fluStreamView(st, 0))
 }
 
 func (s *Server) streamSessions(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")
+	started := time.Now()
 	sessions := s.mgr.Sessions().List(name)
 	out := make([]map[string]any, 0, len(sessions))
 	for _, sess := range sessions {
 		out = append(out, sess.View())
 	}
-	writeJSON(w, http.StatusOK, out)
+	s.collection(w, "sessions", out, len(out), "", int(time.Since(started).Milliseconds()))
 }
 
 func (s *Server) streamDVR(w http.ResponseWriter, r *http.Request) {
@@ -216,13 +237,14 @@ func (s *Server) dvrUnlock(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) listSessions(w http.ResponseWriter, r *http.Request) {
+	started := time.Now()
 	streamName := r.URL.Query().Get("stream")
 	sessions := s.mgr.Sessions().List(streamName)
 	out := make([]map[string]any, 0, len(sessions))
 	for _, sess := range sessions {
 		out = append(out, sess.View())
 	}
-	writeJSON(w, http.StatusOK, out)
+	s.collection(w, "sessions", out, len(out), "", int(time.Since(started).Milliseconds()))
 }
 
 func decodeBody(r *http.Request, v any) error {

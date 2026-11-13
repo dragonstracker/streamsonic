@@ -6,6 +6,19 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-11-13
+
+### Changed
+
+- The admin panel is now the real Flussonic `admin3` SPA (React + MUI + the original
+  CSS, icon font, locales, and empty-state art), driven by Streamsonic's API.
+- `GET /streams`, `GET /sessions`, and the empty collection routes return the
+  Flussonic envelope (`server_id`, `estimated_count`, `timing`, `next`, named list).
+- `GET /config` returns the Flussonic stats payload the panel header reads
+  (`total_streams`, `total_clients`, `input_kbit`, `output_kbit`, `uptime`).
+- `GET /ui_settings` ships the same base64 fonts, logos, favicons, colors, and
+  `menu_items` shape the original panel expects.
+
 ## [1.2.7] - 2026-11-13
 
 ### Fixed

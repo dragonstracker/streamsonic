@@ -1,8 +1,10 @@
 package api
 
 import (
+	"crypto/rand"
 	"crypto/subtle"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"net/http"
 	"strings"
@@ -18,10 +20,14 @@ type Server struct {
 	mgr     *stream.Manager
 	version string
 	started time.Time
+	id      string
 }
 
 func NewServer(store *Store, mgr *stream.Manager, version string) *Server {
-	return &Server{store: store, mgr: mgr, version: version, started: time.Now()}
+	var b [16]byte
+	_, _ = rand.Read(b[:])
+	id := hex.EncodeToString(b[:4]) + "-" + hex.EncodeToString(b[4:6]) + "-" + hex.EncodeToString(b[6:8]) + "-" + hex.EncodeToString(b[8:10]) + "-" + hex.EncodeToString(b[10:])
+	return &Server{store: store, mgr: mgr, version: version, started: time.Now(), id: id}
 }
 
 func (s *Server) Handler() http.Handler {
@@ -47,6 +53,18 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET "+APIPrefix+"/sessions", s.auth(s.listSessions))
 	mux.HandleFunc("GET "+APIPrefix+"/server/stats", s.auth(s.serverStats))
 	mux.HandleFunc("GET "+APIPrefix+"/ui_settings", s.uiSettings)
+	mux.HandleFunc("GET "+APIPrefix+"/templates", s.auth(s.emptyCollection("templates")))
+	mux.HandleFunc("GET "+APIPrefix+"/vods", s.auth(s.emptyCollection("vods")))
+	mux.HandleFunc("GET "+APIPrefix+"/multiplexers", s.auth(s.emptyCollection("multiplexers")))
+	mux.HandleFunc("GET "+APIPrefix+"/dvrs", s.auth(s.emptyCollection("dvrs")))
+	mux.HandleFunc("GET "+APIPrefix+"/transponders", s.auth(s.emptyCollection("transponders")))
+	mux.HandleFunc("GET "+APIPrefix+"/dvb_cards", s.auth(s.emptyCollection("dvb_cards")))
+	mux.HandleFunc("GET "+APIPrefix+"/auth_backends", s.auth(s.emptyCollection("auth_backends")))
+	mux.HandleFunc("GET "+APIPrefix+"/event_sinks", s.auth(s.emptyCollection("event_sinks")))
+	mux.HandleFunc("GET "+APIPrefix+"/cluster/peers", s.auth(s.emptyCollection("peers")))
+	mux.HandleFunc("GET "+APIPrefix+"/cluster/sources", s.auth(s.emptyCollection("sources")))
+	mux.HandleFunc("GET "+APIPrefix+"/system/updater", s.auth(s.systemUpdater))
+	mux.HandleFunc("GET "+APIPrefix+"/admin_view_token", s.auth(s.adminViewToken))
 	mux.HandleFunc("GET "+APIPrefix+"/monitoring/liveness", s.liveness)
 	mux.HandleFunc("GET "+APIPrefix+"/monitoring/readiness", s.readiness)
 	mux.HandleFunc("GET "+APIPrefix+"/version", s.versionHandler)
@@ -131,7 +149,7 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	enc := json.NewEncoder(w)
-	enc.SetIndent("", "  ")
+	enc.SetEscapeHTML(false)
 	enc.Encode(v)
 }
 

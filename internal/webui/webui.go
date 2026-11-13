@@ -30,11 +30,8 @@ func Handler() http.Handler {
 		case strings.HasPrefix(path, "/admin/assets/"):
 			serveAsset(w, r, fileServer, strings.TrimPrefix(path, "/admin/assets/"))
 			return
-		case strings.HasPrefix(path, "/admin/ui/"):
-			serveAsset(w, r, fileServer, strings.TrimPrefix(path, "/admin/ui/"))
-			return
-		case strings.HasPrefix(path, "/ui/"):
-			serveAsset(w, r, fileServer, strings.TrimPrefix(path, "/ui/"))
+		case strings.HasPrefix(path, "/admin/locales/"):
+			serveAsset(w, r, fileServer, "locales/"+strings.TrimPrefix(path, "/admin/locales/"))
 			return
 		case strings.HasPrefix(path, "/assets/"):
 			serveAsset(w, r, fileServer, strings.TrimPrefix(path, "/assets/"))
@@ -48,6 +45,7 @@ func Handler() http.Handler {
 }
 
 func serveAsset(w http.ResponseWriter, r *http.Request, fileServer http.Handler, name string) {
+	name = strings.TrimPrefix(name, "/")
 	if name == "" || strings.Contains(name, "..") {
 		http.NotFound(w, r)
 		return

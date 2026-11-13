@@ -19,11 +19,24 @@ var (
 
 func (s *Server) getConfig(w http.ResponseWriter, r *http.Request) {
 	cfg := s.store.Current()
-	writeJSON(w, http.StatusOK, map[string]any{
-		"config_version": []int64{s.started.Unix(), s.store.Rev()},
-		"config":         cfg.Snapshot().APIView(),
-		"text":           cfg.RenderText(),
-	})
+	listeners := map[string]any{}
+	if cfg.HTTP.Port > 0 {
+		listeners["http"] = []map[string]any{{"port": cfg.HTTP.Port}}
+	}
+	body := map[string]any{
+		"server_id": s.serverID(),
+		"stats":     s.fluConfigStats(),
+		"listeners": listeners,
+		"session_log": cfg.SessionLog,
+	}
+	if cfg.AdminLogin != "" {
+		body["edit_auth"] = map[string]any{
+			"login":    cfg.AdminLogin,
+			"password": cfg.AdminPassword,
+			"hash":     false,
+		}
+	}
+	writeJSON(w, http.StatusOK, body)
 }
 
 func (s *Server) getConfigText(w http.ResponseWriter, r *http.Request) {
@@ -109,28 +122,25 @@ func (s *Server) serverStats(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) uiSettings(w http.ResponseWriter, r *http.Request) {
-	cfg := s.store.Current()
 	writeJSON(w, http.StatusOK, map[string]any{
 		"title":   "streamsonic",
 		"product": "streamer",
 		"brand":   "streamsonic",
-		"version": s.version,
+		"logo":    brandB64("logo.png"),
+		"logoAuth": brandB64("logoAuth.png"),
 		"colors": map[string]string{
 			"primary":    "#002DAB",
 			"secondary":  "#FF0D70",
 			"background": "#fff",
 		},
 		"fonts": map[string]string{
-			"regular": "custom-400.woff2",
-			"light":   "custom-300.woff2",
-			"medium":  "custom-500.woff2",
+			"regular": brandB64("regular.woff2"),
+			"light":   brandB64("light.woff2"),
+			"medium":  brandB64("medium.woff2"),
 		},
-		"locales":      []string{"en"},
-		"edit_auth":    cfg.AdminLogin != "",
-		"default_page": "streams",
-		"locale":       "en",
-		"timezone":     "UTC",
-		"menu_items": map[string]bool{
+		"favicons": brandFavicons(),
+		"locales":  []string{"en", "es", "ru"},
+		"menu_items": map[string]any{
 			"cluster":              true,
 			"iptv":                 true,
 			"chassis":              false,
@@ -143,9 +153,22 @@ func (s *Server) uiSettings(w http.ResponseWriter, r *http.Request) {
 			"pins":                 false,
 			"pulse":                true,
 			"streamer_config":      true,
+			"streamer_upgrade":     map[string]string{"package_name": "streamsonic"},
 			"upload_logs":          true,
 		},
 	})
+}
+
+func (s *Server) systemUpdater(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]any{
+		"package_name": "streamsonic",
+		"status":       "up_to_date",
+		"version":      s.version,
+	})
+}
+
+func (s *Server) adminViewToken(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]any{"token": ""})
 }
 
 func (s *Server) liveness(w http.ResponseWriter, r *http.Request) {
