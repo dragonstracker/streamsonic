@@ -12,6 +12,7 @@ type HTTP struct {
 	TLS  bool
 	Cert string
 	Key  string
+	Flat bool `json:"flat,omitempty"`
 }
 
 type Config struct {
@@ -21,6 +22,7 @@ type Config struct {
 	AdminLogin    string
 	AdminPassword string
 	Streams       map[string]*Stream
+	Order         []string
 	DVRs          map[string]*DVR
 	Backends      map[string]*AuthBackend
 	Sinks         []*EventSink
@@ -57,6 +59,7 @@ type Input struct {
 	MaxRetry                int               `json:"max_retry_timeout,omitempty"`
 	RetryLimit              int               `json:"retry_limit,omitempty"`
 	Headers                 map[string]string `json:"headers,omitempty"`
+	HeaderOrder             []string          `json:"header_order,omitempty"`
 	UserAgent               string            `json:"user_agent,omitempty"`
 	BindIP                  string            `json:"bind_ip,omitempty"`
 	Programs                []int             `json:"programs,omitempty"`

@@ -127,6 +127,9 @@ func TestRenderRoundTrip(t *testing.T) {
 	if strings.Contains(text, "ondemand true;") {
 		t.Fatalf("redundant ondemand flag:\n%s", text)
 	}
+	if strings.Index(text, "ondemand 376 {") > strings.Index(text, "stream 114 {") {
+		t.Fatalf("declaration order changed:\n%s", text)
+	}
 	for _, name := range []string{"376", "114"} {
 		a, b := c.Streams[name], again.Streams[name]
 		if a == nil || b == nil {
@@ -135,5 +138,32 @@ func TestRenderRoundTrip(t *testing.T) {
 		if a.Title != b.Title || a.Ondemand != b.Ondemand || a.Disabled != b.Disabled || len(a.Inputs) != len(b.Inputs) {
 			t.Fatalf("stream %q changed across round trip", name)
 		}
+	}
+}
+
+func TestInputHeadersKeepTheirOrder(t *testing.T) {
+	const src = "stream hdr {\n" +
+		"  input tshttps://cdn.example.com/stream/14/index.m3u8?token=&exp=0 header.Referer=https://a.example header.Origin=https://b.example;\n" +
+		"}\n"
+	const want = "header.Referer=https://a.example header.Origin=https://b.example;"
+
+	c, err := ParseText(src)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	text := c.RenderText()
+	if !strings.Contains(text, want) {
+		t.Fatalf("option order changed on render:\n%s", text)
+	}
+
+	again, err := ParseText(text)
+	if err != nil {
+		t.Fatalf("reparse: %v", err)
+	}
+	if got := again.RenderText(); got != text {
+		t.Fatalf("second render differs:\n%s", got)
+	}
+	if !strings.Contains(c.Clone().RenderText(), want) {
+		t.Fatal("clone lost the option order")
 	}
 }

@@ -6,6 +6,21 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.2.5] - 2026-11-13
+
+### Fixed
+
+- Saving the configuration no longer reorders `header.*` options on an input. The
+  options keep the order they were written in, so a save leaves the file byte-identical
+  apart from normalised whitespace.
+- An explicit `disabled false;` inside a stream survives a save instead of being
+  dropped.
+- A flat `http 8081;` declaration stays flat instead of being rewritten as an
+  `http { port 8081; }` block.
+- A non-GET request to a path that is not an API route now answers `405` instead of
+  falling through to the admin page. A PUT to a misspelled endpoint returned `200` with
+  HTML and looked like it saved.
+
 ## [1.2.4] - 2026-11-13
 
 ### Fixed

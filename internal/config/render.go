@@ -13,18 +13,22 @@ func (c *Config) RenderText() string {
 
 func (c *Config) Nodes() []*Node {
 	nodes := make([]*Node, 0, 8)
-	http := &Node{Name: "http", Block: true}
-	http.Children = append(http.Children, &Node{Name: "port", Args: []string{strconv.Itoa(c.HTTP.Port)}})
-	if c.HTTP.TLS {
-		http.Children = append(http.Children, &Node{Name: "tls", Args: []string{"true"}})
+	if c.HTTP.Flat && !c.HTTP.TLS && c.HTTP.Cert == "" && c.HTTP.Key == "" {
+		nodes = append(nodes, &Node{Name: "http", Args: []string{strconv.Itoa(c.HTTP.Port)}})
+	} else {
+		http := &Node{Name: "http", Block: true}
+		http.Children = append(http.Children, &Node{Name: "port", Args: []string{strconv.Itoa(c.HTTP.Port)}})
+		if c.HTTP.TLS {
+			http.Children = append(http.Children, &Node{Name: "tls", Args: []string{"true"}})
+		}
+		if c.HTTP.Cert != "" {
+			http.Children = append(http.Children, &Node{Name: "cert", Args: []string{c.HTTP.Cert}})
+		}
+		if c.HTTP.Key != "" {
+			http.Children = append(http.Children, &Node{Name: "key", Args: []string{c.HTTP.Key}})
+		}
+		nodes = append(nodes, http)
 	}
-	if c.HTTP.Cert != "" {
-		http.Children = append(http.Children, &Node{Name: "cert", Args: []string{c.HTTP.Cert}})
-	}
-	if c.HTTP.Key != "" {
-		http.Children = append(http.Children, &Node{Name: "key", Args: []string{c.HTTP.Key}})
-	}
-	nodes = append(nodes, http)
 	if c.AdminLogin != "" {
 		nodes = append(nodes, &Node{Name: "edit_auth", Args: []string{c.AdminLogin, c.AdminPassword}})
 	}
@@ -40,7 +44,7 @@ func (c *Config) Nodes() []*Node {
 	for _, s := range c.Sinks {
 		nodes = append(nodes, sinkNode(s))
 	}
-	for _, name := range sortedKeys(c.Streams) {
+	for _, name := range c.OrderedStreams() {
 		nodes = append(nodes, streamNode(c.Streams[name]))
 	}
 	nodes = append(nodes, c.Extra...)
@@ -146,8 +150,8 @@ func streamNode(s *Stream) *Node {
 		if in.RetryLimit != 0 {
 			args = append(args, fmt.Sprintf("retry_limit=%d", in.RetryLimit))
 		}
-		for k, v := range in.Headers {
-			args = append(args, k+"="+v)
+		for _, k := range headerKeys(in) {
+			args = append(args, k+"="+in.Headers[k])
 		}
 		n.Children = append(n.Children, &Node{Name: "input", Args: args})
 	}
@@ -263,6 +267,40 @@ func sortedKeys[V any](m map[string]V) []string {
 	return out
 }
 
+func headerKeys(in Input) []string {
+	out := make([]string, 0, len(in.Headers))
+	seen := make(map[string]bool, len(in.Headers))
+	for _, k := range in.HeaderOrder {
+		if _, ok := in.Headers[k]; ok && !seen[k] {
+			seen[k] = true
+			out = append(out, k)
+		}
+	}
+	for _, k := range sortedKeys(in.Headers) {
+		if !seen[k] {
+			out = append(out, k)
+		}
+	}
+	return out
+}
+
+func (c *Config) OrderedStreams() []string {
+	out := make([]string, 0, len(c.Streams))
+	seen := make(map[string]bool, len(c.Streams))
+	for _, name := range c.Order {
+		if _, ok := c.Streams[name]; ok && !seen[name] {
+			seen[name] = true
+			out = append(out, name)
+		}
+	}
+	for _, name := range sortedKeys(c.Streams) {
+		if !seen[name] {
+			out = append(out, name)
+		}
+	}
+	return out
+}
+
 type Snapshot struct {
 	HTTP         HTTP           `json:"http"`
 	AdminLogin   string         `json:"edit_auth,omitempty"`
@@ -280,8 +318,8 @@ func (c *Config) Snapshot() Snapshot {
 		SessionLog: c.SessionLog,
 		Streams:    make([]*Stream, 0, len(c.Streams)),
 	}
-	for _, k := range sortedKeys(c.Streams) {
-		s.Streams = append(s.Streams, c.Streams[k])
+	for _, name := range c.OrderedStreams() {
+		s.Streams = append(s.Streams, c.Streams[name])
 	}
 	for _, k := range sortedKeys(c.DVRs) {
 		s.DVRs = append(s.DVRs, c.DVRs[k])
@@ -321,6 +359,7 @@ func FromSnapshot(s Snapshot) *Config {
 	c.SessionLog = s.SessionLog
 	for _, st := range s.Streams {
 		c.Streams[st.Name] = st
+		c.Order = append(c.Order, st.Name)
 	}
 	for _, d := range s.DVRs {
 		c.DVRs[d.Name] = d

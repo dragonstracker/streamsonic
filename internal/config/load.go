@@ -82,6 +82,7 @@ func (c *Config) applyNode(n *Node) error {
 			return fmt.Errorf("line %d: stream %q is declared twice", n.Line, s.Name)
 		}
 		c.Streams[s.Name] = s
+		c.Order = append(c.Order, s.Name)
 	default:
 		c.Extra = append(c.Extra, n)
 	}
@@ -96,6 +97,7 @@ func (c *Config) applyHTTP(n *Node) error {
 				return fmt.Errorf("line %d: http port %q is not a number", n.Line, p)
 			}
 			c.HTTP.Port = port
+			c.HTTP.Flat = true
 		}
 		for _, a := range n.Args[1:] {
 			switch a {
@@ -300,7 +302,11 @@ func streamOption(s *Stream, ch *Node) error {
 	case "ondemand":
 		s.Ondemand = boolArg(ch)
 	case "disabled":
-		s.Disabled = boolArg(ch)
+		if boolArg(ch) {
+			s.Disabled = true
+		} else {
+			s.Extras = append(s.Extras, ch)
+		}
 	case "nomedia":
 		s.NoMedia = boolArg(ch)
 	case "title":
@@ -455,6 +461,9 @@ func parseInput(ch *Node) (Input, error) {
 		default:
 			if in.Headers == nil {
 				in.Headers = map[string]string{}
+			}
+			if _, seen := in.Headers[k]; !seen {
+				in.HeaderOrder = append(in.HeaderOrder, k)
 			}
 			in.Headers[k] = v
 		}

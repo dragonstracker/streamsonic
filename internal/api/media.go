@@ -41,14 +41,15 @@ func (s *Server) handleMedia(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleRoot(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet && r.Method != http.MethodHead {
+		w.Header().Set("Allow", "GET, HEAD")
+		writeErr(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
 	p := strings.TrimPrefix(r.URL.Path, "/")
 	if p != "" {
 		name, file, ok := strings.Cut(p, "/")
 		if ok && name != "" && looksLikeMedia(file) {
-			if r.Method != http.MethodGet && r.Method != http.MethodHead {
-				writeErr(w, http.StatusMethodNotAllowed, "method not allowed")
-				return
-			}
 			s.serveMediaPath(w, r, name, file)
 			return
 		}
