@@ -15,6 +15,26 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   GitHub release for the pushed tag.
 - CI workflow running `gofmt`, `go vet`, `go test`, a full build and `shellcheck`.
 
+## [1.2.3] - 2026-11-13
+
+### Fixed
+
+- The binary reports the version of the release it was built from.
+
+## [1.2.2] - 2026-11-13
+
+### Fixed
+
+- `install.sh` prints the HTTP port read from the deployed config instead of a
+  hard-coded guess, and opens that port in `ufw` or `firewalld` when either is active.
+
+## [1.2.1] - 2026-11-13
+
+### Fixed
+
+- A config without a `dvr` block falls back to `/var/lib/streamsonic/dvr` on an
+  installed host instead of writing archives into `/etc/streamsonic/dvr`.
+
 ## [1.2.0] - 2026-11-13
 
 ### Added
