@@ -53,7 +53,7 @@ func (s *Server) Handler() http.Handler {
 
 	mux.HandleFunc("/stream/", s.handleMedia)
 	mux.HandleFunc("/", s.handleRoot)
-	return mux
+	return withGzip(mux)
 }
 
 func (s *Server) auth(h http.HandlerFunc) http.HandlerFunc {

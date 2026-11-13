@@ -6,6 +6,16 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.2.4] - 2026-11-13
+
+### Fixed
+
+- The admin API, the SPA bundle and the stylesheet are served gzip-encoded when the
+  client accepts it. A 999-stream catalog drops from ~1 MB to ~61 KB per refresh, so
+  the stream list reaches the browser in about a second instead of stalling.
+- HLS manifests, DASH segments, DVR ranges and `preview.json` stay uncompressed so
+  playback, byte ranges and MSE previews are never affected.
+
 ### Added
 
 - One-click installer (`install.sh`) with platform detection, SHA-256 verification,
