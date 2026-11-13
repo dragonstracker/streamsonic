@@ -8,7 +8,7 @@
 # Environment:
 #   DRMSONIC_TAG      release tag to install, or "latest" (default)
 #   DRMSONIC_PREFIX   install prefix (default /usr/local)
-#   DRMSONIC_PORT     HTTP port written to a fresh config (default 8080)
+#   DRMSONIC_PORT     HTTP port written to a fresh config (default 8099)
 #   DRMSONIC_NO_START set to 1 to skip enabling the systemd service
 #
 set -euo pipefail
@@ -16,7 +16,7 @@ set -euo pipefail
 REPO="dragonstracker/streamsonic"
 TAG="${DRMSONIC_TAG:-${STREAMSONIC_TAG:-latest}}"
 PREFIX="${DRMSONIC_PREFIX:-${STREAMSONIC_PREFIX:-/usr/local}}"
-PORT="${DRMSONIC_PORT:-${STREAMSONIC_PORT:-8080}}"
+PORT="${DRMSONIC_PORT:-${STREAMSONIC_PORT:-8099}}"
 NO_START="${DRMSONIC_NO_START:-${STREAMSONIC_NO_START:-0}}"
 
 BIN_DIR="$PREFIX/bin"
@@ -158,13 +158,39 @@ summary() {
   local ip
   ip="$(hostname -I 2>/dev/null | awk '{print $1}')"
   [ -n "$ip" ] || ip="127.0.0.1"
+  local port
+  port="$(config_port)"
+  [ -n "$port" ] || port="$PORT"
   printf '\nstreamsonic is installed\n'
   printf '  binary   %s\n' "$BINARY"
   printf '  config   %s\n' "$CONF"
   printf '  data     %s\n' "$DATA_DIR"
-  printf '  ui       http://%s:%s/admin/\n' "$ip" "$PORT"
-  printf '  api      http://%s:%s/streamer/api/v3/\n' "$ip" "$PORT"
+  printf '  ui       http://%s:%s/admin/\n' "$ip" "$port"
+  printf '  api      http://%s:%s/streamer/api/v3/\n' "$ip" "$port"
   printf '  status   systemctl status streamsonic\n\n'
+}
+
+config_port() {
+  [ -f "$CONF" ] || return
+  awk '
+    /^[[:space:]]*http[[:space:]]+[0-9]+/ { gsub(/[^0-9]/, ""); print; exit }
+    /^[[:space:]]*http[[:space:]]*\{/ { inside = 1; next }
+    inside && /^[[:space:]]*port[[:space:]]+[0-9]+/ { gsub(/[^0-9]/, ""); print; exit }
+  ' "$CONF"
+}
+
+open_firewall() {
+  local port
+  port="$(config_port)"
+  [ -n "$port" ] || port="$PORT"
+  if command -v ufw >/dev/null 2>&1 && ufw status 2>/dev/null | grep -qi active; then
+    ufw allow "${port}/tcp" >/dev/null 2>&1 && log "opened ${port}/tcp in ufw"
+    return
+  fi
+  if command -v firewall-cmd >/dev/null 2>&1 && firewall-cmd --state >/dev/null 2>&1; then
+    firewall-cmd --permanent --add-port="${port}/tcp" >/dev/null 2>&1 &&
+      firewall-cmd --reload >/dev/null 2>&1 && log "opened ${port}/tcp in firewalld"
+  fi
 }
 
 main() {
@@ -177,6 +203,7 @@ main() {
   write_config
   write_unit
   start_service
+  open_firewall
   summary
 }
 
