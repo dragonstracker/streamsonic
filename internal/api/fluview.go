@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"streamsonic/internal/config"
+	"streamsonic/internal/media"
 	"streamsonic/internal/stream"
 )
 
@@ -169,80 +170,202 @@ func fluStreamView(st *stream.Stream, position int) map[string]any {
 	cfg := st.Config()
 	snap := st.Snapshot()
 	alive, status := fluStatus(st)
+	raw, _ := snap["stats"].(map[string]any)
+	if raw == nil {
+		raw = map[string]any{}
+	}
+	clients := intOf(raw["clients"])
+	rate := intOf(raw["bitrate"])
+	info := st.Info()
+
+	name := st.Name()
+	title := ""
+	disabled := false
+	static := true
+	inputs := []config.Input{}
+	if cfg != nil {
+		name = cfg.Name
+		title = cfg.Title
+		disabled = cfg.Disabled
+		static = !cfg.Ondemand
+		inputs = cfg.Inputs
+	}
+
+	mediaView := fluMediaInfoView(info, title)
+	proto := ""
+	if len(inputs) > 0 {
+		proto = inputs[0].Type
+		if proto == "" {
+			proto = config.TypeOfURL(inputs[0].URL)
+		}
+	}
+
+	inputStats := map[string]any{
+		"active":         alive,
+		"proto":          proto,
+		"bytes":          raw["bytes_in"],
+		"errors":         raw["input_errors"],
+		"retries":        0,
+		"input_switches": raw["input_switches"],
+		"media_info":     mediaView,
+	}
+
+	inputsView := make([]map[string]any, 0, len(inputs))
+	for i, in := range inputs {
+		view := fluInputView(in)
+		inProto := proto
+		if i > 0 {
+			inProto = in.Type
+			if inProto == "" {
+				inProto = config.TypeOfURL(in.URL)
+			}
+		}
+		stats := map[string]any{
+			"active":         alive && i == 0,
+			"proto":          inProto,
+			"bytes":          raw["bytes_in"],
+			"retries":        0,
+			"input_switches": raw["input_switches"],
+			"media_info":     mediaView,
+		}
+		view["stats"] = stats
+		if inner, ok := view[inProto].(map[string]any); ok {
+			inner["stats"] = stats
+		}
+		inputsView = append(inputsView, view)
+	}
+
 	stats := map[string]any{
-		"alive":  alive,
-		"status": status,
-		"play":   map[string]any{"play_opened_sessions": snap["stats"].(map[string]any)["clients"]},
+		"alive":              alive,
+		"status":             status,
+		"input":              inputStats,
+		"inputs":             inputsView,
+		"bytes_out":          raw["bytes_out"],
+		"bitrate":            rate / 1000,
+		"input_bitrate":      rate / 1000,
+		"media_info":         mediaView,
+		"lifetime":           lifetimeMs(snap),
+		"last_access_at":     intOf(raw["last_publish"]),
+		"running_transcoder": false,
+		"play": map[string]any{
+			"play_bytes":           raw["bytes_out"],
+			"play_opened_sessions": clients,
+		},
 	}
-	if raw, ok := snap["stats"].(map[string]any); ok {
-		if v, ok := raw["bitrate"]; ok {
-			stats["bitrate"] = v
-			stats["input_bitrate"] = v
-		}
-		if v, ok := raw["bytes_in"]; ok {
-			stats["bytes_in"] = v
-		}
-		if v, ok := raw["bytes_out"]; ok {
-			stats["bytes_out"] = v
-		}
-		if v, ok := raw["input_errors"]; ok {
-			stats["input_errors"] = v
-		}
-		if v, ok := raw["input_switches"]; ok {
-			stats["input_switches"] = v
-		}
-	}
-	if err, ok := snap["last_error"].(string); ok && err != "" {
-		stats["source_error"] = err
-	}
-	if info, ok := snap["media_info"]; ok && info != nil {
-		stats["media_info"] = info
-	}
-	if dvr, ok := snap["dvr"]; ok {
+	if dvr, ok := snap["dvr"]; ok && dvr != nil {
 		stats["dvr_enabled"] = true
 		stats["dvr"] = dvr
 	} else {
 		stats["dvr_enabled"] = false
 	}
 
-	inputs := make([]map[string]any, 0)
-	title := ""
-	disabled := false
-	static := true
-	name := st.Name()
-	if cfg != nil {
-		name = cfg.Name
-		title = cfg.Title
-		disabled = cfg.Disabled
-		static = !cfg.Ondemand
-		for _, in := range cfg.Inputs {
-			inputs = append(inputs, fluInputView(in))
-		}
-	}
-
 	out := map[string]any{
-		"name":      name,
-		"title":     title,
-		"position":  position,
-		"disabled":  disabled,
-		"static":    static,
-		"nomedia":   false,
-		"named_by":  "config",
-		"inputs":    inputs,
-		"stats":     stats,
+		"name":     name,
+		"title":    title,
+		"position": position,
+		"disabled": disabled,
+		"static":   static,
+		"nomedia":  false,
+		"named_by": "config",
+		"inputs":   inputsView,
+		"stats":    stats,
 	}
 	if cfg != nil {
 		out["config_on_disk"] = map[string]any{
 			"name":     name,
 			"title":    title,
+			"position": position,
 			"disabled": disabled,
-			"inputs":   inputs,
-		}
-		if cfg.Ondemand {
-			out["config_on_disk"].(map[string]any)["static"] = false
+			"static":   static,
+			"inputs":   inputsView,
 		}
 	}
 	return out
+}
+
+func fluMediaInfoView(info media.MediaInfo, title string) map[string]any {
+	tracks := make([]map[string]any, 0, len(info.Tracks))
+	var video, audio int
+	for _, t := range info.Tracks {
+		view := map[string]any{
+			"pid":     t.PID,
+			"content": t.Type,
+			"codec":   string(t.Codec),
+		}
+		switch t.Type {
+		case media.KindVideo:
+			video++
+			view["track_id"] = "v" + strconv.Itoa(video)
+			view["width"] = t.Width
+			view["height"] = t.Height
+			view["pixel_width"] = t.Width
+			view["pixel_height"] = t.Height
+			view["sar_width"] = 1
+			view["sar_height"] = 1
+			view["fps"] = t.FPS
+			view["avg_fps"] = t.FPS
+			view["is_progressive"] = true
+			view["closed_captions"] = []string{}
+			if t.Profile != "" {
+				view["profile"] = t.Profile
+			}
+			if t.Level != "" {
+				view["level"] = t.Level
+			}
+		case media.KindAudio:
+			audio++
+			view["track_id"] = "a" + strconv.Itoa(audio)
+			view["sample_rate"] = t.SampleRate
+			view["channels"] = t.Channels
+		}
+		if t.Bitrate > 0 {
+			view["bitrate"] = t.Bitrate / 1000
+		}
+		if t.Language != "" {
+			view["language"] = t.Language
+		}
+		tracks = append(tracks, view)
+	}
+	out := map[string]any{
+		"tracks":    tracks,
+		"provider":  "Streamsonic",
+		"stream_id": 0,
+	}
+	if title != "" {
+		out["title"] = title
+	}
+	if len(info.Programs) > 0 {
+		out["program_id"] = info.Programs[0].ID
+	}
+	return out
+}
+
+func lifetimeMs(snap map[string]any) int64 {
+	started, ok := snap["started"].(string)
+	if !ok || started == "" {
+		return 0
+	}
+	t, err := time.Parse(time.RFC3339, started)
+	if err != nil || t.IsZero() {
+		return 0
+	}
+	return time.Since(t).Milliseconds()
+}
+
+func intOf(v any) int64 {
+	switch n := v.(type) {
+	case int64:
+		return n
+	case int:
+		return int64(n)
+	case int32:
+		return int64(n)
+	case float64:
+		return int64(n)
+	case uint64:
+		return int64(n)
+	}
+	return 0
 }
 
 func parseLimit(r *http.Request, def int) int {

@@ -41,6 +41,10 @@ func (s *Server) handleMedia(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleRoot(w http.ResponseWriter, r *http.Request) {
+	if strings.HasPrefix(r.URL.Path, "/stream/") {
+		s.handleMedia(w, r)
+		return
+	}
 	if r.Method != http.MethodGet && r.Method != http.MethodHead {
 		w.Header().Set("Allow", "GET, HEAD")
 		writeErr(w, http.StatusMethodNotAllowed, "method not allowed")
@@ -49,9 +53,15 @@ func (s *Server) handleRoot(w http.ResponseWriter, r *http.Request) {
 	p := strings.TrimPrefix(r.URL.Path, "/")
 	if p != "" {
 		name, file, ok := strings.Cut(p, "/")
-		if ok && name != "" && looksLikeMedia(file) {
-			s.serveMediaPath(w, r, name, file)
-			return
+		if ok && name != "" {
+			if file == "embed.html" {
+				s.serveEmbed(w, r, name)
+				return
+			}
+			if looksLikeMedia(file) {
+				s.serveMediaPath(w, r, name, file)
+				return
+			}
 		}
 	}
 	s.uiHandler().ServeHTTP(w, r)
@@ -179,10 +189,12 @@ func (h *mediaHandler) serve() {
 	case file == "info.json":
 		writeJSON(h.w, http.StatusOK, h.stream.Snapshot())
 	case file == "media_info.json":
-		writeJSON(h.w, http.StatusOK, h.stream.Info())
+		writeJSON(h.w, http.StatusOK, fluMediaInfoView(h.stream.Info(), ""))
 	case file == "ranges.json":
 		h.serveRanges()
 	case file == "index.m3u8" || file == "master.m3u8" || file == "playlist.m3u8":
+		h.serveHLS()
+	case file == "index.fmp4.m3u8" || file == "index.ll.m3u8" || file == "mse_ld.m3u8":
 		h.serveHLS()
 	case file == "index.mpd" || file == "manifest.mpd":
 		h.serveMPD()

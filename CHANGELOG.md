@@ -6,6 +6,29 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.3.3] - 2026-11-14
+
+### Fixed
+
+- Stream detail page no longer raises `method not allowed`: added
+  `PUT /streams/{name}/sessions` (player stats) and
+  `POST /streams/{name}/inputs/{index}/select` (input switching).
+- Admin session heartbeat `PUT /admin_session_save/{session_id}` is accepted
+  instead of returning `404` every minute.
+- `/{name}/embed.html` now serves the real Flussonic live player (bundled
+  `/flu/player` assets) with a generated config instead of the admin SPA,
+  so the overview preview plays HLS, DASH, and DVR.
+- `media_info.json` and `stats.media_info` return the Flussonic track shape
+  (`track_id`, `content`, `pixel_width`, `is_progressive`, ...), so the detail
+  page renders Input and Output media info.
+- Stream view adds `stats.input`, `stats.inputs`, `stats.play`, `lifetime`,
+  `last_access_at`, and `dvr_enabled`, and `bitrate` is reported in kbit/s.
+- Unauthorized API calls answer `403 {"error":"authorization_failed"}` like
+  Flussonic, and preflights allow private-network access.
+- `index.fmp4.m3u8`, `index.ll.m3u8`, and input selection now resolve instead
+  of `404`/`405`.
+- Config round-trip keeps credentials containing `@`, `%`, and `#` intact.
+
 ## [1.3.2] - 2026-11-13
 
 ### Fixed

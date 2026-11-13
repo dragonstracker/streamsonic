@@ -131,10 +131,10 @@ func (s *Server) serverStats(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) uiSettings(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{
-		"title":   "streamsonic",
-		"product": "streamer",
-		"brand":   "streamsonic",
-		"logo":    brandB64("logo.png"),
+		"title":    "streamsonic",
+		"product":  "streamer",
+		"brand":    "streamsonic",
+		"logo":     brandB64("logo.png"),
 		"logoAuth": brandB64("logoAuth.png"),
 		"colors": map[string]string{
 			"primary":    "#002DAB",
@@ -175,17 +175,22 @@ func (s *Server) systemUpdater(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) licenseInfo(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{
-		"status":      "open_source",
-		"license":     "open_source",
-		"version":     s.version,
-		"activated":   true,
-		"online":      false,
-		"message":     "streamsonic is open source; no license key is required",
+		"status":    "open_source",
+		"license":   "open_source",
+		"version":   s.version,
+		"activated": true,
+		"online":    false,
+		"message":   "streamsonic is open source; no license key is required",
 	})
 }
 
 func (s *Server) adminViewToken(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"token": ""})
+}
+
+func (s *Server) adminSessionSave(w http.ResponseWriter, r *http.Request) {
+	io.Copy(io.Discard, io.LimitReader(r.Body, 1<<20))
+	writeJSON(w, http.StatusOK, map[string]any{"session_id": r.PathValue("session_id")})
 }
 
 func (s *Server) liveness(w http.ResponseWriter, r *http.Request) {

@@ -248,6 +248,47 @@ func (s *Server) listSessions(w http.ResponseWriter, r *http.Request) {
 	s.collection(w, "sessions", out, len(out), "", int(time.Since(started).Milliseconds()))
 }
 
+func (s *Server) selectInput(w http.ResponseWriter, r *http.Request) {
+	name := r.PathValue("name")
+	idx, err := strconv.Atoi(r.PathValue("index"))
+	if err != nil || idx < 0 {
+		writeErr(w, http.StatusBadRequest, "invalid input index")
+		return
+	}
+	if s.mgr.Get(name) == nil {
+		writeErr(w, http.StatusNotFound, "stream not found")
+		return
+	}
+	if !s.mgr.SelectInput(name, idx) {
+		writeErr(w, http.StatusBadRequest, "input index out of range")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"selected": idx})
+}
+
+func (s *Server) putPlayStats(w http.ResponseWriter, r *http.Request) {
+	if s.mgr.Get(r.PathValue("name")) == nil {
+		writeErr(w, http.StatusNotFound, "stream not found")
+		return
+	}
+	io.Copy(io.Discard, io.LimitReader(r.Body, 1<<20))
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (s *Server) streamSessionsByPath(w http.ResponseWriter, r *http.Request) {
+	started := time.Now()
+	sessions := s.mgr.Sessions().List(r.PathValue("name"))
+	out := make([]map[string]any, 0, len(sessions))
+	for _, sess := range sessions {
+		out = append(out, sess.View())
+	}
+	s.collection(w, "sessions", out, len(out), "", int(time.Since(started).Milliseconds()))
+}
+
+func (s *Server) apiNotFound(w http.ResponseWriter, r *http.Request) {
+	writeErr(w, http.StatusNotFound, "not found")
+}
+
 func decodeBody(r *http.Request, v any) error {
 	body, err := io.ReadAll(io.LimitReader(r.Body, 8<<20))
 	if err != nil {

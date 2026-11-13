@@ -10,6 +10,9 @@ import (
 //go:embed assets
 var assets embed.FS
 
+//go:embed assets/flu/player/embed.html
+var embedTemplate string
+
 func content() fs.FS {
 	sub, err := fs.Sub(assets, "assets")
 	if err != nil {
@@ -32,6 +35,9 @@ func Handler() http.Handler {
 			return
 		case strings.HasPrefix(path, "/admin/locales/"):
 			serveAsset(w, r, fileServer, "locales/"+strings.TrimPrefix(path, "/admin/locales/"))
+			return
+		case strings.HasPrefix(path, "/flu/player/"):
+			serveAsset(w, r, fileServer, "flu/player/"+strings.TrimPrefix(path, "/flu/player/"))
 			return
 		case strings.HasPrefix(path, "/assets/"):
 			serveAsset(w, r, fileServer, strings.TrimPrefix(path, "/assets/"))
@@ -70,4 +76,11 @@ func serveIndex(w http.ResponseWriter, root fs.FS) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Write(data)
+}
+
+func WriteEmbed(w http.ResponseWriter, config []byte) {
+	body := strings.ReplaceAll(embedTemplate, "{{config}}", string(config))
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Write([]byte(body))
 }

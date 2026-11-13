@@ -52,6 +52,7 @@ type Stream struct {
 	switches    atomic.Int64
 	lastPublish atomic.Int64
 	bitrate     atomic.Int64
+	preferred   atomic.Int32
 	lastSegTime time.Time
 }
 
@@ -67,6 +68,7 @@ func newStream(mgr *Manager, cfg *config.Stream) *Stream {
 		dashA:   packager.NewRing(n, nil),
 		preview: packager.NewRing(n, nil),
 	}
+	s.preferred.Store(-1)
 	return s
 }
 
@@ -173,6 +175,9 @@ func (s *Stream) run(ctx context.Context) {
 				return
 			}
 			continue
+		}
+		if p := int(s.preferred.Swap(-1)); p >= 0 && p < len(inputs) {
+			inputs = append(append([]config.Input{}, inputs[p:]...), inputs[:p]...)
 		}
 		for i, in := range inputs {
 			if ctx.Err() != nil {
@@ -618,6 +623,23 @@ func (m *Manager) Restart(name string) bool {
 	if s == nil || parent == nil {
 		return false
 	}
+	s.Restart(parent)
+	return true
+}
+
+func (m *Manager) SelectInput(name string, index int) bool {
+	m.mu.RLock()
+	s := m.streams[name]
+	parent := m.parent
+	m.mu.RUnlock()
+	if s == nil || parent == nil {
+		return false
+	}
+	cfg := s.Config()
+	if cfg == nil || index < 0 || index >= len(cfg.Inputs) {
+		return false
+	}
+	s.preferred.Store(int32(index))
 	s.Restart(parent)
 	return true
 }

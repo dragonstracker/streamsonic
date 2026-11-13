@@ -1,8 +1,8 @@
 package api
 
 import (
-	"encoding/base64"
 	"embed"
+	"encoding/base64"
 	"io/fs"
 )
 

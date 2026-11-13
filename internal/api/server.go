@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -43,12 +44,19 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("PUT "+APIPrefix+"/streams/{name}", s.auth(s.putStream))
 	mux.HandleFunc("DELETE "+APIPrefix+"/streams/{name}", s.auth(s.deleteStream))
 	mux.HandleFunc("PUT "+APIPrefix+"/streams/{name}/stop", s.auth(s.stopStream))
+	mux.HandleFunc("DELETE "+APIPrefix+"/streams/{name}/stop", s.auth(s.stopStream))
 	mux.HandleFunc("PUT "+APIPrefix+"/streams/{name}/start", s.auth(s.startStream))
+	mux.HandleFunc("POST "+APIPrefix+"/streams/{name}/inputs/{index}/select", s.auth(s.selectInput))
 	mux.HandleFunc("GET "+APIPrefix+"/streams/{name}/stats", s.auth(s.streamStats))
 	mux.HandleFunc("GET "+APIPrefix+"/streams/{name}/sessions", s.auth(s.streamSessions))
+	mux.HandleFunc("PUT "+APIPrefix+"/streams/{name}/sessions", s.auth(s.putPlayStats))
 	mux.HandleFunc("GET "+APIPrefix+"/streams/{name}/dvr", s.auth(s.streamDVR))
 	mux.HandleFunc("POST "+APIPrefix+"/streams/{name}/dvr/lock", s.auth(s.dvrLock))
 	mux.HandleFunc("DELETE "+APIPrefix+"/streams/{name}/dvr/lock", s.auth(s.dvrUnlock))
+	mux.HandleFunc(APIPrefix+"/", s.auth(s.apiNotFound))
+
+	mux.HandleFunc("PUT /{name}/sessions", s.putPlayStats)
+	mux.HandleFunc("GET /{name}/sessions", s.streamSessionsByPath)
 
 	mux.HandleFunc("GET "+APIPrefix+"/sessions", s.auth(s.listSessions))
 	mux.HandleFunc("GET "+APIPrefix+"/server/stats", s.auth(s.serverStats))
@@ -65,15 +73,52 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET "+APIPrefix+"/cluster/sources", s.auth(s.emptyCollection("sources")))
 	mux.HandleFunc("GET "+APIPrefix+"/system/updater", s.auth(s.systemUpdater))
 	mux.HandleFunc("GET "+APIPrefix+"/admin_view_token", s.auth(s.adminViewToken))
+	mux.HandleFunc("PUT "+APIPrefix+"/admin_session_save/{session_id}", s.auth(s.adminSessionSave))
+	mux.HandleFunc("DELETE "+APIPrefix+"/admin_view_token", s.auth(s.adminViewToken))
 	mux.HandleFunc("GET "+APIPrefix+"/license", s.auth(s.licenseInfo))
 	mux.HandleFunc("GET "+APIPrefix+"/license/activations", s.auth(s.licenseInfo))
 	mux.HandleFunc("GET "+APIPrefix+"/monitoring/liveness", s.liveness)
 	mux.HandleFunc("GET "+APIPrefix+"/monitoring/readiness", s.readiness)
 	mux.HandleFunc("GET "+APIPrefix+"/version", s.versionHandler)
 
-	mux.HandleFunc("/stream/", s.handleMedia)
 	mux.HandleFunc("/", s.handleRoot)
-	return withCORS(withGzip(mux))
+	return withCORS(withLog(withGzip(mux)))
+}
+
+type statusWriter struct {
+	http.ResponseWriter
+	status int
+}
+
+func (w *statusWriter) WriteHeader(code int) {
+	if w.status == 0 {
+		w.status = code
+	}
+	w.ResponseWriter.WriteHeader(code)
+}
+
+func (w *statusWriter) Write(b []byte) (int, error) {
+	if w.status == 0 {
+		w.status = http.StatusOK
+	}
+	return w.ResponseWriter.Write(b)
+}
+
+func (w *statusWriter) Flush() {
+	if f, ok := w.ResponseWriter.(http.Flusher); ok {
+		f.Flush()
+	}
+}
+
+func withLog(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		rec := &statusWriter{ResponseWriter: w}
+		started := time.Now()
+		next.ServeHTTP(rec, r)
+		if rec.status >= http.StatusBadRequest {
+			log.Printf("%s %s %d %s", r.Method, r.URL.RequestURI(), rec.status, time.Since(started).Round(time.Millisecond))
+		}
+	})
 }
 
 func (s *Server) auth(h http.HandlerFunc) http.HandlerFunc {
@@ -101,7 +146,7 @@ func (s *Server) auth(h http.HandlerFunc) http.HandlerFunc {
 			}
 		}
 		w.Header().Set("Cache-Control", "no-store")
-		writeErr(w, http.StatusUnauthorized, "unauthorized")
+		writeJSON(w, http.StatusForbidden, map[string]any{"error": "authorization_failed"})
 	}
 }
 
@@ -182,6 +227,7 @@ func withCORS(next http.Handler) http.Handler {
 		w.Header().Set("Access-Control-Allow-Methods", "GET, PUT, POST, DELETE, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "*")
 		w.Header().Set("Access-Control-Expose-Headers", "*")
+		w.Header().Set("Access-Control-Allow-Private-Network", "true")
 		if r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusNoContent)
 			return
