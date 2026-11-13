@@ -1,0 +1,22 @@
+[Unit]
+Description=Streamsonic live media server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=streamsonic
+Group=streamsonic
+ExecStart=/usr/local/bin/streamsonic -config /etc/streamsonic/streamsonic.conf
+Restart=always
+RestartSec=2
+LimitNOFILE=65536
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/streamsonic
+CapabilityBoundingSet=
+
+[Install]
+WantedBy=multi-user.target

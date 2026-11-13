@@ -1,0 +1,10 @@
+dist/
+bin/
+*.exe
+*.test
+*.out
+dvr/
+*.log
+.DS_Store
+.idea/
+.vscode/

@@ -1,0 +1,27 @@
+http {
+  port 8080;
+}
+
+# edit_auth admin change-me;
+
+dvr main {
+  root /var/lib/streamsonic/dvr;
+  expiration 604800;
+  storage_limit 50000000000;
+}
+
+stream channel-1 {
+  input tshttp://origin.example.com/live.ts;
+  title "Channel 1";
+  segment_duration 6;
+  segment_count 6;
+  clients_timeout 30;
+  dvr main;
+}
+
+# stream radio-1 {
+#   input udp://239.0.0.1:1234;
+#   segment_duration 4;
+#   segment_count 10;
+#   dvr main;
+# }
