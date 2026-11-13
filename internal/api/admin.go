@@ -1,10 +1,13 @@
 package api
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 
@@ -28,6 +31,9 @@ func (s *Server) getConfig(w http.ResponseWriter, r *http.Request) {
 	if cfg.HTTP.Port > 0 {
 		listeners["http"] = []map[string]any{{"port": cfg.HTTP.Port}}
 	}
+	if port := rtmpPort(cfg); port > 0 {
+		listeners["rtmp"] = []map[string]any{{"port": port}}
+	}
 	body := map[string]any{
 		"server_id":   s.serverID(),
 		"stats":       s.fluConfigStats(),
@@ -42,6 +48,18 @@ func (s *Server) getConfig(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	writeJSON(w, http.StatusOK, body)
+}
+
+func rtmpPort(cfg *config.Config) int {
+	for _, n := range cfg.Extra {
+		if n.Name != "rtmp" || len(n.Args) == 0 {
+			continue
+		}
+		if port, err := strconv.Atoi(n.Args[0]); err == nil {
+			return port
+		}
+	}
+	return 0
 }
 
 func (s *Server) getConfigText(w http.ResponseWriter, r *http.Request) {
@@ -73,19 +91,118 @@ func (s *Server) putConfig(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]any{"config_version": []int64{s.started.Unix(), s.store.Rev()}})
 		return
 	}
-	var snap config.Snapshot
-	if err := decodeBody(r, &snap); err != nil {
+	var raw map[string]json.RawMessage
+	body, err := io.ReadAll(io.LimitReader(r.Body, 8<<20))
+	if err != nil {
 		writeErr(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	next := config.FromSnapshot(snap)
-	next.Path = s.store.Current().Path
+	if err := json.Unmarshal(body, &raw); err != nil {
+		writeErr(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	cur := s.store.Current()
+	next := cur.Clone()
+	if err := applyConfigPatch(next, raw); err != nil {
+		writeErr(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if v, ok := raw["edit_auth"]; ok {
+		login, password := parseAdminAuth(v)
+		next.AdminLogin = login
+		if password != "" {
+			next.AdminPassword = password
+		}
+	}
+	next.Path = cur.Path
 	if err := s.store.Replace(next); err != nil {
 		writeErr(w, http.StatusBadRequest, err.Error())
 		return
 	}
 	s.apply()
 	writeJSON(w, http.StatusOK, map[string]any{"config_version": []int64{s.started.Unix(), s.store.Rev()}})
+}
+
+func applyConfigPatch(c *config.Config, raw map[string]json.RawMessage) error {
+	if v, ok := raw["http"]; ok {
+		if err := json.Unmarshal(v, &c.HTTP); err != nil {
+			return err
+		}
+	}
+	if v, ok := raw["session_log"]; ok {
+		if err := json.Unmarshal(v, &c.SessionLog); err != nil {
+			return err
+		}
+	}
+	if v, ok := raw["streams"]; ok {
+		var list []*config.Stream
+		if err := json.Unmarshal(v, &list); err != nil {
+			return err
+		}
+		c.Streams = make(map[string]*config.Stream, len(list))
+		c.Order = c.Order[:0]
+		for _, st := range list {
+			if st == nil || st.Name == "" {
+				continue
+			}
+			c.Streams[st.Name] = st
+			c.Order = append(c.Order, st.Name)
+		}
+	}
+	if v, ok := raw["dvrs"]; ok {
+		var list []*config.DVR
+		if err := json.Unmarshal(v, &list); err != nil {
+			return err
+		}
+		c.DVRs = make(map[string]*config.DVR, len(list))
+		for _, d := range list {
+			if d != nil && d.Name != "" {
+				c.DVRs[d.Name] = d
+			}
+		}
+	}
+	if v, ok := raw["auth_backends"]; ok {
+		var list []*config.AuthBackend
+		if err := json.Unmarshal(v, &list); err != nil {
+			return err
+		}
+		c.Backends = make(map[string]*config.AuthBackend, len(list))
+		for _, b := range list {
+			if b != nil && b.Name != "" {
+				c.Backends[b.Name] = b
+			}
+		}
+	}
+	if v, ok := raw["event_sinks"]; ok {
+		var list []*config.EventSink
+		if err := json.Unmarshal(v, &list); err != nil {
+			return err
+		}
+		c.Sinks = list
+	}
+	return nil
+}
+
+func parseAdminAuth(raw json.RawMessage) (login, password string) {
+	raw = bytes.TrimSpace(raw)
+	if len(raw) == 0 {
+		return "", ""
+	}
+	if raw[0] == '"' {
+		var v string
+		if json.Unmarshal(raw, &v) == nil {
+			return v, ""
+		}
+		return "", ""
+	}
+	var obj struct {
+		Login    string `json:"login"`
+		Password string `json:"password"`
+	}
+	if json.Unmarshal(raw, &obj) == nil {
+		return obj.Login, obj.Password
+	}
+	return "", ""
 }
 
 func (s *Server) serverStats(w http.ResponseWriter, r *http.Request) {

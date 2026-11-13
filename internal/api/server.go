@@ -212,13 +212,13 @@ func writeText(w http.ResponseWriter, status int, body string) {
 
 func wantsPlainText(r *http.Request) bool {
 	accept := strings.ToLower(r.Header.Get("Accept"))
-	if accept == "" {
+	if accept == "" || strings.Contains(accept, "application/json") {
 		return false
 	}
-	if strings.Contains(accept, "text/plain") {
-		return true
+	if i := strings.IndexByte(accept, ','); i >= 0 {
+		accept = accept[:i]
 	}
-	return false
+	return strings.Contains(accept, "text/plain")
 }
 
 func withCORS(next http.Handler) http.Handler {

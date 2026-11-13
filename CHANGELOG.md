@@ -10,6 +10,19 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Saving the config no longer wipes `edit_auth`: config clones, JSON saves, and
+  partial `PUT /config` bodies all keep the stored admin password, and
+  `edit_auth` is accepted as either a login string or a credentials object.
+- `PUT /config` merges the JSON body into the running config instead of
+  replacing it, so the admin panel can save a single section without sending
+  `http`, streams, and DVRs again.
+- `GET /config` picks text only when `text/plain` is the preferred type, so the
+  admin panel receives JSON (it sends `application/json, text/plain, */*`) and
+  the config editor still receives the plain-text form.
+- Config stats expose the full Flussonic server_stats shape (`license_txt`,
+  `cpu_usage`, `memory_usage`, `partitions`, `transcoder_devices`,
+  `text_alerts`, `video_devices`, ...), which fixes the blank/erroring
+  `#/config` settings page.
 - Stream detail page no longer raises `method not allowed`: added
   `PUT /streams/{name}/sessions` (player stats) and
   `POST /streams/{name}/inputs/{index}/select` (input switching).

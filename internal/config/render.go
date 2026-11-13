@@ -302,21 +302,23 @@ func (c *Config) OrderedStreams() []string {
 }
 
 type Snapshot struct {
-	HTTP         HTTP           `json:"http"`
-	AdminLogin   string         `json:"edit_auth,omitempty"`
-	SessionLog   string         `json:"session_log,omitempty"`
-	Streams      []*Stream      `json:"streams"`
-	DVRs         []*DVR         `json:"dvrs,omitempty"`
-	AuthBackends []*AuthBackend `json:"auth_backends,omitempty"`
-	EventSinks   []*EventSink   `json:"event_sinks,omitempty"`
+	HTTP          HTTP           `json:"http"`
+	AdminLogin    string         `json:"edit_auth,omitempty"`
+	AdminPassword string         `json:"-"`
+	SessionLog    string         `json:"session_log,omitempty"`
+	Streams       []*Stream      `json:"streams"`
+	DVRs          []*DVR         `json:"dvrs,omitempty"`
+	AuthBackends  []*AuthBackend `json:"auth_backends,omitempty"`
+	EventSinks    []*EventSink   `json:"event_sinks,omitempty"`
 }
 
 func (c *Config) Snapshot() Snapshot {
 	s := Snapshot{
-		HTTP:       c.HTTP,
-		AdminLogin: c.AdminLogin,
-		SessionLog: c.SessionLog,
-		Streams:    make([]*Stream, 0, len(c.Streams)),
+		HTTP:          c.HTTP,
+		AdminLogin:    c.AdminLogin,
+		AdminPassword: c.AdminPassword,
+		SessionLog:    c.SessionLog,
+		Streams:       make([]*Stream, 0, len(c.Streams)),
 	}
 	for _, name := range c.OrderedStreams() {
 		s.Streams = append(s.Streams, c.Streams[name])
@@ -356,6 +358,7 @@ func FromSnapshot(s Snapshot) *Config {
 	c := New()
 	c.HTTP = s.HTTP
 	c.AdminLogin = s.AdminLogin
+	c.AdminPassword = s.AdminPassword
 	c.SessionLog = s.SessionLog
 	for _, st := range s.Streams {
 		c.Streams[st.Name] = st
@@ -381,6 +384,7 @@ func (c *Config) Clone() *Config {
 		return c
 	}
 	out := FromSnapshot(snap)
+	out.AdminPassword = c.AdminPassword
 	out.Path = c.Path
 	out.Rev = c.Rev
 	out.Extra = c.Extra

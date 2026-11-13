@@ -16,7 +16,8 @@ func TestWantsPlainText(t *testing.T) {
 		{"application/json", false},
 		{"text/plain", true},
 		{"text/plain, */*", true},
-		{"application/json, text/plain;q=0.9", true},
+		{"application/json, text/plain;q=0.9", false},
+		{"application/json, text/plain, */*", false},
 	}
 	for _, tc := range cases {
 		req := httptest.NewRequest(http.MethodGet, "/streamer/api/v3/config", nil)
